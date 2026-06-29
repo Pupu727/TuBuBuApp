@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "方案",
+  "usingComponents": {
+    "app-loading": "../../components/app-loading/app-loading",
+    "confirm-dialog": "../../components/confirm-dialog/confirm-dialog",
+    "plan-edit-modal": "../../components/plan-edit-modal/plan-edit-modal"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "navigationBarTitleText": "打包工作台",
+  "usingComponents": {
+    "confirm-dialog": "../../components/confirm-dialog/confirm-dialog",
+    "custom-select": "../../components/custom-select/custom-select",
+    "custom-date-picker": "../../components/custom-date-picker/custom-date-picker",
+    "quantity-stepper": "../../components/quantity-stepper/quantity-stepper",
+    "page-skeleton": "../../components/page-skeleton/page-skeleton",
+    "app-loading": "../../components/app-loading/app-loading"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "首页",
+  "usingComponents": {
+    "app-loading": "../../components/app-loading/app-loading",
+    "plan-edit-modal": "../../components/plan-edit-modal/plan-edit-modal",
+    "pie-chart": "../../components/pie-chart/pie-chart"
+  }
+}

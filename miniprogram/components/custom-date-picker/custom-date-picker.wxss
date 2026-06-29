@@ -1,0 +1,237 @@
+.custom-date-picker {
+  position: relative;
+  margin-top: 12rpx;
+  min-width: 0;
+}
+
+.picker-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  height: 84rpx;
+  padding: 0 18rpx;
+  border: 1rpx solid #e5e8eb;
+  border-radius: 18rpx;
+  background: #fbfcfd;
+  box-sizing: border-box;
+}
+
+.custom-date-picker.compact .picker-trigger {
+  height: 76rpx;
+  padding: 0 16rpx;
+  border-radius: 16rpx;
+}
+
+.custom-date-picker.is-error .picker-trigger {
+  border-color: #e74c3c;
+  background: #fff5f5;
+}
+
+.picker-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 26rpx;
+  color: #111318;
+  font-weight: 700;
+}
+
+.picker-value.placeholder {
+  color: #b1b6bc;
+  font-weight: 400;
+}
+
+.picker-arrow {
+  flex: 0 0 auto;
+  color: #8d939b;
+  font-size: 22rpx;
+}
+
+.picker-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 1300;
+  background: rgba(17, 19, 24, 0.35);
+}
+
+.custom-date-picker.hide-trigger {
+  margin-top: 0;
+  height: 0;
+  overflow: visible;
+}
+
+.picker-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1301;
+  max-height: 52vh;
+  padding: 20rpx 24rpx calc(16rpx + constant(safe-area-inset-bottom));
+  padding: 20rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  border: 0;
+  border-top: 1rpx solid #e5e8eb;
+  border-radius: 24rpx 24rpx 0 0;
+  background: #ffffff;
+  box-shadow: 0 -8rpx 32rpx rgba(17, 19, 24, 0.12);
+  box-sizing: border-box;
+}
+
+.custom-date-picker.floating .picker-panel {
+  left: 20rpx;
+  right: 20rpx;
+  bottom: auto;
+  top: 50%;
+  max-width: 640rpx;
+  max-height: 560rpx;
+  margin: 0 auto;
+  padding: 32rpx 28rpx 28rpx;
+  border: 1rpx solid #e8ebef;
+  border-radius: 28rpx;
+  box-shadow: 0 24rpx 64rpx rgba(17, 19, 24, 0.22);
+  transform: translateY(-50%);
+}
+
+.custom-date-picker.floating .panel-head {
+  margin-bottom: 18rpx;
+}
+
+.custom-date-picker.floating .panel-title {
+  font-size: 32rpx;
+}
+
+.custom-date-picker.floating .panel-tip {
+  font-size: 24rpx;
+}
+
+.custom-date-picker.floating .date-picker-view {
+  height: 300rpx;
+}
+
+.custom-date-picker.floating .date-picker-indicator {
+  height: 72rpx;
+}
+
+.custom-date-picker.floating .picker-item {
+  height: 72rpx;
+  line-height: 72rpx;
+  font-size: 32rpx;
+}
+
+.custom-date-picker.floating .panel-actions {
+  margin-top: 20rpx;
+  gap: 14rpx;
+}
+
+.custom-date-picker.floating .action-btn {
+  height: 80rpx;
+  line-height: 80rpx;
+  font-size: 28rpx;
+  border-radius: 18rpx;
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.panel-title {
+  font-size: 28rpx;
+  font-weight: 900;
+  color: #111318;
+}
+
+.panel-tip {
+  font-size: 22rpx;
+  color: #9aa0a8;
+}
+
+.date-picker-view {
+  width: 100%;
+  height: 240rpx;
+}
+
+.date-picker-indicator {
+  height: 56rpx;
+}
+
+.picker-item {
+  height: 56rpx;
+  line-height: 56rpx;
+  text-align: center;
+  font-size: 28rpx;
+  color: #4b5563;
+  font-weight: 700;
+}
+
+.panel-actions {
+  margin-top: 16rpx;
+  display: flex;
+  gap: 12rpx;
+}
+
+.action-btn {
+  flex: 1;
+  min-width: 0;
+  height: 72rpx;
+  border-radius: 16rpx;
+  font-size: 26rpx;
+  font-weight: 900;
+  line-height: 72rpx;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.action-btn.muted {
+  background: #ffffff;
+  color: #8a8f96;
+  box-shadow: inset 0 0 0 1rpx #e2e4e6;
+}
+
+.action-btn.primary {
+  background: #111827;
+  color: #ffffff;
+}
+
+@media (max-width: 360px) {
+  .picker-panel {
+    max-height: 56vh;
+    padding: 16rpx 20rpx calc(12rpx + env(safe-area-inset-bottom));
+  }
+
+  .custom-date-picker.floating .picker-panel {
+    left: 16rpx;
+    right: 16rpx;
+    max-height: 580rpx;
+    padding: 28rpx 24rpx 24rpx;
+  }
+
+  .custom-date-picker.floating .date-picker-view {
+    height: 280rpx;
+  }
+
+  .custom-date-picker.floating .picker-item {
+    height: 68rpx;
+    line-height: 68rpx;
+    font-size: 30rpx;
+  }
+
+  .date-picker-view {
+    height: 220rpx;
+  }
+
+  .action-btn {
+    height: 68rpx;
+    line-height: 68rpx;
+    font-size: 24rpx;
+  }
+}

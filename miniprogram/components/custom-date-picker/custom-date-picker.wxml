@@ -1,0 +1,37 @@
+<view class="custom-date-picker {{error ? 'is-error' : ''}} {{compact ? 'compact' : ''}} {{hideTrigger ? 'hide-trigger' : ''}} {{floating ? 'floating' : ''}}">
+  <view wx:if="{{!hideTrigger}}" class="picker-trigger" catchtap="toggleOpen">
+    <text class="picker-value {{displayValue ? '' : 'placeholder'}}">{{displayValue || placeholder}}</text>
+    <text class="picker-arrow">{{open ? '▴' : '▾'}}</text>
+  </view>
+
+  <view wx:if="{{open}}" class="picker-mask" catchtap="closePanel"></view>
+
+  <view wx:if="{{open}}" class="picker-panel" catchtap="noop">
+    <view class="panel-head">
+      <text class="panel-title">选择购买日期</text>
+      <text class="panel-tip">不可超过今天</text>
+    </view>
+
+    <picker-view
+      class="date-picker-view"
+      indicator-class="date-picker-indicator"
+      value="{{pickerIndexes}}"
+      bindchange="onPickerChange"
+    >
+      <picker-view-column>
+        <view wx:for="{{years}}" wx:key="*this" class="picker-item">{{item}}年</view>
+      </picker-view-column>
+      <picker-view-column>
+        <view wx:for="{{months}}" wx:key="*this" class="picker-item">{{item}}月</view>
+      </picker-view-column>
+      <picker-view-column>
+        <view wx:for="{{days}}" wx:key="*this" class="picker-item">{{item}}日</view>
+      </picker-view-column>
+    </picker-view>
+
+    <view class="panel-actions">
+      <view class="action-btn muted" catchtap="clearDate">清除</view>
+      <view class="action-btn primary" catchtap="confirmDate">确定</view>
+    </view>
+  </view>
+</view>

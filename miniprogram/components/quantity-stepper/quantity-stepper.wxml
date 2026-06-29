@@ -1,0 +1,30 @@
+<view class="quantity-stepper {{isExceeded ? 'is-error' : ''}}">
+  <view
+    class="stepper-side stepper-side--minus {{value <= min ? 'is-disabled' : ''}}"
+    catchtap="onMinus"
+    aria-label="减少数量"
+  >
+    <text class="stepper-glyph stepper-glyph--minus">-</text>
+  </view>
+  <view class="stepper-value-wrap">
+    <input
+      class="stepper-input"
+      type="number"
+      value="{{inputText}}"
+      adjust-position="{{true}}"
+      cursor-spacing="120"
+      confirm-type="done"
+      bindfocus="onInputFocus"
+      bindinput="onInput"
+      bindblur="onInputBlur"
+      bindconfirm="onInputBlur"
+    />
+  </view>
+  <view
+    class="stepper-side stepper-side--plus {{value >= max ? 'is-disabled' : ''}}"
+    catchtap="onPlus"
+    aria-label="增加数量"
+  >
+    <text class="stepper-glyph stepper-glyph--plus">+</text>
+  </view>
+</view>

@@ -1,0 +1,445 @@
+﻿<page-skeleton show="{{initialLoading}}" text="{{initialLoadingText}}" />
+
+<block wx:if="{{!initialLoading}}">
+<scroll-view class="page" scroll-y>
+  <view class="screen">
+    <view class="top-title">
+      <text>装备管理</text>
+    </view>
+
+    <view class="summary-bar">
+      <view class="summary-item">
+        <text class="summary-value">{{summary.gearCount}}</text>
+        <text class="summary-label">装备数量</text>
+      </view>
+      <view class="divider"></view>
+      <view class="summary-item">
+        <text class="summary-value">{{summary.totalGearWeight}}</text>
+        <text class="summary-label">总重量</text>
+      </view>
+      <view class="divider"></view>
+      <view class="summary-item">
+        <text class="summary-value">{{summary.totalGearValue}}</text>
+        <text class="summary-label">总价值</text>
+      </view>
+      <view class="divider"></view>
+      <view class="summary-item">
+        <text class="summary-value">{{summary.utilization}}</text>
+        <text class="summary-label">利用率</text>
+      </view>
+    </view>
+
+    <view class="search-row">
+      <input
+        class="search-input"
+        value="{{searchKeyword}}"
+        placeholder="搜索装备名称"
+        confirm-type="search"
+        bindinput="onSearchInput"
+      />
+      <button wx:if="{{searchKeyword}}" class="search-clear" bindtap="clearSearch">清除</button>
+    </view>
+
+    <view class="tool-row">
+      <view class="segment">
+        <view
+          class="segment-item {{viewMode === 'library' ? 'is-active' : ''}}"
+          bindtap="selectLibraryView"
+        >
+          <text class="segment-label">装备列表</text>
+        </view>
+        <view wx:if="{{hasPlans}}" class="segment-plan-anchor">
+          <view
+            class="segment-item {{viewMode === 'plan' ? 'is-active' : ''}}"
+            bindtap="onPlanSegmentTap"
+          >
+            <text class="segment-label segment-label-ellipsis">{{activePlanName}}</text>
+            <text wx:if="{{planOptions.length > 1}}" class="segment-caret">{{showPlanPanel ? '▴' : '▾'}}</text>
+          </view>
+          <view wx:if="{{showPlanPanel}}" class="plan-panel" catchtap="noop">
+            <block wx:for="{{planOptions}}" wx:key="id">
+              <view
+                class="plan-panel-item"
+                data-id="{{item.id}}"
+                catchtap="selectPlanFromPanel"
+              >
+                <text class="plan-panel-name">{{item.name}}</text>
+                <text wx:if="{{item.id === activePlanId}}" class="plan-panel-current">当前</text>
+              </view>
+            </block>
+            <view class="plan-panel-divider"></view>
+            <view class="plan-panel-manage" catchtap="goPlansPage">管理方案</view>
+          </view>
+        </view>
+        <view wx:else class="segment-item" catchtap="openSmartPackModal">
+          <text class="segment-label segment-label-ellipsis">{{activePlanName}}</text>
+          <text class="segment-caret">▾</text>
+        </view>
+      </view>
+      <view class="tool-actions">
+        <button
+          class="batch-button {{isBatchDeleteMode ? 'is-active' : ''}}"
+          bindtap="toggleBatchDeleteMode"
+        >{{isBatchDeleteMode ? '取消' : '批量删除'}}</button>
+        <button wx:if="{{!isBatchDeleteMode}}" class="ai-button" bindtap="goAdd">新增</button>
+      </view>
+    </view>
+
+    <view wx:if="{{showPlanPanel}}" class="plan-panel-mask" catchtap="closePlanPanel"></view>
+
+    <view class="content-row">
+      <view wx:if="{{showCategoryRail}}" class="category-rail">
+        <block wx:for="{{categories}}" wx:key="id">
+          <view
+            class="category-item {{item.activeClass}}"
+            data-category="{{item.id}}"
+            catchtap="selectCategory"
+          >
+            {{item.name}} <text wx:if="{{item.showCaret}}">›</text>
+          </view>
+        </block>
+      </view>
+
+      <view class="gear-list">
+        <view wx:if="{{isGearEmpty}}" class="empty">
+          <text>{{emptyTitle}}</text>
+          <button wx:if="{{isPlanEmpty}}" bindtap="goPackingWorkbench">去打包</button>
+          <button wx:else bindtap="goAdd">添加第一件装备</button>
+        </view>
+
+        <view wx:elif="{{showNoResults}}" class="empty">
+          <text>{{noResultsText}}</text>
+          <button wx:if="{{searchKeyword}}" bindtap="clearSearch">清除搜索</button>
+        </view>
+
+        <block wx:else>
+          <view
+            wx:for="{{gears}}"
+            wx:key="id"
+            class="gear-card {{isBatchDeleteMode ? 'is-batch-mode' : ''}} {{item.batchSelectedClass}}"
+            data-id="{{item.id}}"
+            bindtap="handleGearCardTap"
+          >
+            <view class="gear-head">
+              <view wx:if="{{isBatchDeleteMode}}" class="batch-check {{item.batchCheckClass}}">
+                <text>{{item.batchCheckText}}</text>
+              </view>
+              <view class="gear-title-wrap">
+                <text class="gear-name">{{item.name}}</text>
+                <text class="status {{item.status}}">{{item.statusLabel}}</text>
+              </view>
+            </view>
+            <view class="line"></view>
+            <view class="metric-grid">
+              <view>
+                <text class="metric-value">{{item.weight}}</text>
+                <text class="metric-label">重量</text>
+              </view>
+              <view>
+                <text class="metric-value">{{item.price}}</text>
+                <text class="metric-label">价格</text>
+              </view>
+              <view>
+                <text class="metric-value">{{item.daysOwned}}</text>
+                <text class="metric-label">持有天数</text>
+              </view>
+              <view>
+                <text class="metric-value">{{item.dailyCost}}</text>
+                <text class="metric-label">日均成本</text>
+              </view>
+              <view>
+                <text class="metric-value">{{item.categoryName}}</text>
+                <text class="metric-label">分类</text>
+              </view>
+              <view>
+                <text class="metric-value">{{item.statusLabel}}</text>
+                <text class="metric-label">状态</text>
+              </view>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </view>
+</scroll-view>
+
+<view
+  wx:if="{{isBatchDeleteMode && selectedGearCount > 0}}"
+  class="batch-delete-dock"
+  catchtap="confirmBatchDelete"
+>
+  <view class="trash-mark">
+    <view class="trash-lid"></view>
+    <view class="trash-body"></view>
+  </view>
+  <text class="batch-delete-text">删除已选 {{selectedGearCount}} 件</text>
+</view>
+
+<view wx:if="{{showSmartPackModal}}" class="modal-mask">
+  <view class="smart-modal">
+    <view class="modal-close" catchtap="closeSmartPackModal">×</view>
+    <text class="modal-badge">智能打包</text>
+    <text class="modal-title">创建出行方案</text>
+    <text class="modal-subtitle">使用智能打包准备装备清单</text>
+
+    <view class="modal-empty">
+      <text class="modal-empty-title">还没有选择出行装备?</text>
+      <text class="modal-empty-desc">进入智能打包创建或切换出行方案</text>
+    </view>
+
+    <view class="modal-step">
+      <text class="step-index step-blue">1</text>
+      <text class="step-title">选择出行装备</text>
+    </view>
+    <view class="modal-step">
+      <text class="step-index step-green">2</text>
+      <view>
+        <text class="step-title">加入出行装备</text>
+        <text class="step-desc">背包也应「装入背包」</text>
+      </view>
+    </view>
+    <view class="modal-step">
+      <text class="step-index step-yellow">3</text>
+      <text class="step-title">切换图表查看背负重量与出行价值</text>
+    </view>
+
+    <view class="modal-actions">
+      <button class="modal-secondary" bindtap="closeSmartPackModal">稍后再说</button>
+      <button class="modal-primary" bindtap="goPackingWorkbench">智能打包</button>
+    </view>
+  </view>
+</view>
+
+<view wx:if="{{showEditModal}}" class="modal-mask form-modal-mask modal-viewport-center">
+  <view class="edit-modal">
+    <view class="modal-close" catchtap="closeEditModal">×</view>
+    <text class="modal-title">{{editingGearId ? '编辑装备' : '新增装备'}}</text>
+
+    <scroll-view
+      class="edit-scroll"
+      scroll-y
+      enhanced
+      show-scrollbar="{{false}}"
+    >
+      <view class="edit-form">
+      <view class="edit-form-row">
+        <view id="edit-field-name" class="edit-field">
+          <view class="edit-field-head">
+            <text class="edit-label">装备名称</text>
+            <text class="required-star">*</text>
+            <text wx:if="{{showEditErrors && editErrors.name}}" class="field-error-text">不能为空</text>
+            <text wx:elif="{{editLimits.name}}" class="field-error-text">字数超过上限</text>
+          </view>
+          <view class="edit-box {{(showEditErrors && editErrors.name) || editLimits.name ? 'is-error' : ''}}">
+            <input
+              class="edit-box-input"
+              value="{{editForm.name}}"
+              adjust-position="{{true}}"
+              cursor-spacing="120"
+              bindinput="onEditInputName"
+            />
+          </view>
+        </view>
+        <view id="edit-field-weight" class="edit-field">
+          <view class="edit-field-head">
+            <text class="edit-label">重量</text>
+            <text class="required-star">*</text>
+            <text wx:if="{{showEditErrors && editErrors.weight}}" class="field-error-text">不能为空</text>
+            <text wx:elif="{{editLimits.weight}}" class="field-error-text">超过上限</text>
+          </view>
+          <view class="edit-box edit-box-weight {{(showEditErrors && editErrors.weight) || editLimits.weight ? 'is-error' : ''}}">
+            <input
+              class="edit-box-input edit-box-input-grow"
+              type="digit"
+              value="{{editForm.weightValue}}"
+              adjust-position="{{true}}"
+              cursor-spacing="120"
+              bindinput="onEditInputWeight"
+            />
+            <view class="edit-box-units">
+              <view class="edit-box-unit {{editForm.weightUnit === 'g' ? 'active' : ''}}" data-unit="g" catchtap="onEditWeightUnitTap">g</view>
+              <view class="edit-box-unit {{editForm.weightUnit === 'kg' ? 'active' : ''}}" data-unit="kg" catchtap="onEditWeightUnitTap">kg</view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="edit-form-row">
+        <view id="edit-field-price" class="edit-field">
+          <view class="edit-field-head">
+            <text class="edit-label">价格（元）</text>
+            <text wx:if="{{editLimits.price}}" class="field-error-text">超过上限</text>
+          </view>
+          <view class="edit-box {{editLimits.price ? 'is-error' : ''}}">
+            <input
+              class="edit-box-input"
+              type="digit"
+              value="{{editForm.priceYuan}}"
+              adjust-position="{{true}}"
+              cursor-spacing="120"
+              bindinput="onEditInputPrice"
+            />
+          </view>
+        </view>
+        <view class="edit-field">
+          <view class="edit-field-head">
+            <text class="edit-label">购买日期</text>
+          </view>
+          <view class="edit-box edit-box-date" catchtap="openEditDatePicker">
+            <text class="edit-box-date-text {{editForm.purchase_date ? '' : 'placeholder'}}">{{editForm.purchase_date || '未设置'}}</text>
+            <text class="edit-box-date-arrow">▾</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="edit-form-row">
+        <view class="edit-field">
+          <view class="edit-field-head">
+            <text class="edit-label">分类</text>
+            <text class="required-star">*</text>
+          </view>
+          <view class="edit-box edit-box-select">
+            <custom-select
+              embedded="{{true}}"
+              elevated="{{true}}"
+              options="{{categoryOptions}}"
+              value="{{editForm.category}}"
+              placeholder="选择分类"
+              bind:change="onEditCategoryChange"
+            />
+          </view>
+        </view>
+        <view class="edit-field">
+          <view class="edit-field-head">
+            <text class="edit-label">状态</text>
+          </view>
+          <view class="edit-box edit-box-select">
+            <block wx:for="{{[editForm.category]}}" wx:key="*this">
+              <custom-select
+                embedded="{{true}}"
+                elevated="{{true}}"
+                options="{{editStatusOptions}}"
+                value="{{editForm.status}}"
+                placeholder="选择状态"
+                bind:change="onEditStatusChange"
+              />
+            </block>
+          </view>
+        </view>
+        <view class="edit-field edit-field--quantity">
+          <view class="edit-field-head">
+            <text class="edit-label">数量</text>
+            <text wx:if="{{editLimits.quantity}}" class="field-error-text">超出限制</text>
+          </view>
+          <view class="edit-box edit-box-quantity {{editLimits.quantity ? 'is-error' : ''}}">
+            <quantity-stepper
+              value="{{editForm.quantity}}"
+              min="{{1}}"
+              max="{{50}}"
+              bind:change="onEditQuantityChange"
+              bind:limit="onEditQuantityLimit"
+            />
+          </view>
+        </view>
+      </view>
+
+      <view class="edit-form-row">
+        <view wx:if="{{editForm.category === 'supply'}}" id="edit-field-calorie" class="edit-field edit-field-full">
+          <view class="edit-field-head">
+            <text class="edit-label">热量</text>
+            <text class="required-star">*</text>
+            <text wx:if="{{showEditErrors && editErrors.calorie}}" class="field-error-text">不能为空</text>
+            <text wx:elif="{{editLimits.calorie}}" class="field-error-text">超过上限</text>
+          </view>
+          <view class="edit-box edit-box-calorie {{(showEditErrors && editErrors.calorie) || editLimits.calorie ? 'is-error' : ''}}">
+            <input
+              class="edit-box-input edit-box-input-grow"
+              type="digit"
+              value="{{editForm.calorieKcalValue}}"
+              placeholder="如 450"
+              adjust-position="{{true}}"
+              cursor-spacing="120"
+              bindinput="onEditInputCalorie"
+            />
+            <view class="edit-box-unit-suffix">kcal</view>
+          </view>
+        </view>
+        <view wx:else id="edit-field-channel" class="edit-field edit-field-full">
+          <view class="edit-field-head">
+            <text class="edit-label">购买渠道</text>
+            <text wx:if="{{editLimits.channel}}" class="field-error-text">字数超过上限</text>
+          </view>
+          <view class="edit-box {{editLimits.channel ? 'is-error' : ''}}">
+            <input
+              class="edit-box-input"
+              value="{{editForm.channel}}"
+              placeholder="如 淘宝、线下店"
+              adjust-position="{{true}}"
+              cursor-spacing="120"
+              bindinput="onEditInputChannel"
+            />
+          </view>
+        </view>
+      </view>
+
+      <view id="edit-field-remark" class="edit-field field-remark">
+        <view class="edit-field-head">
+          <text class="edit-label">备注</text>
+          <text wx:if="{{editLimits.remark}}" class="field-error-text">字数超过上限</text>
+        </view>
+        <textarea
+          class="edit-box edit-box-textarea {{editLimits.remark ? 'is-error' : ''}}"
+          value="{{editForm.remark}}"
+          adjust-position="{{true}}"
+          cursor-spacing="120"
+          bindinput="onEditInputRemark"
+        />
+      </view>
+      </view>
+    </scroll-view>
+
+    <view class="edit-actions">
+      <view wx:if="{{editingGearId}}" class="edit-delete" catchtap="confirmDeleteGear">删除</view>
+      <view class="edit-secondary" catchtap="closeEditModal">取消</view>
+      <view class="edit-primary" catchtap="saveEdit">保存</view>
+    </view>
+  </view>
+</view>
+
+<custom-date-picker
+  wx:if="{{showEditModal}}"
+  id="editDatePicker"
+  hide-trigger="{{true}}"
+  floating="{{true}}"
+  compact
+  value="{{editForm.purchase_date}}"
+  placeholder="未设置"
+  bind:change="onEditPurchaseDateChange"
+/>
+
+<confirm-dialog
+  show="{{showDeleteConfirm}}"
+  title="删除装备"
+  content="删除后装备库不再显示，历史方案快照不受影响。"
+  confirm-text="删除"
+  danger="{{true}}"
+  bind:confirm="executeDeleteGear"
+  bind:cancel="closeDeleteConfirm"
+/>
+
+<confirm-dialog
+  show="{{showBatchDeleteConfirm}}"
+  title="批量删除装备"
+  content="将从装备库删除已选的 {{selectedGearCount}} 件装备，历史方案快照不受影响。"
+  confirm-text="删除"
+  danger="{{true}}"
+  bind:confirm="executeBatchDeleteGear"
+  bind:cancel="closeBatchDeleteConfirm"
+/>
+</block>
+
+<app-loading
+  show="{{showTransitionLoading}}"
+  text="{{transitionLoadingText}}"
+/>
+

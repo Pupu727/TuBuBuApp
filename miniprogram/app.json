@@ -1,0 +1,52 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/equipment/equipment",
+    "pages/add/add",
+    "pages/plans/plans",
+    "pages/plan-overview/plan-overview",
+    "pages/packing/packing",
+    "pages/profile/profile"
+  ],
+  "window": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "TuBu",
+    "navigationBarBackgroundColor": "#f7f8f4"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#7d838c",
+    "selectedColor": "#111318",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "assets/tabbar/home.png",
+        "selectedIconPath": "assets/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/equipment/equipment",
+        "text": "装备",
+        "iconPath": "assets/tabbar/gear.png",
+        "selectedIconPath": "assets/tabbar/gear-active.png"
+      },
+      {
+        "pagePath": "pages/plans/plans",
+        "text": "方案",
+        "iconPath": "assets/tabbar/plans.png",
+        "selectedIconPath": "assets/tabbar/plans-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "assets/tabbar/profile.png",
+        "selectedIconPath": "assets/tabbar/profile-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "componentFramework": "glass-easel",
+  "lazyCodeLoading": "requiredComponents"
+}

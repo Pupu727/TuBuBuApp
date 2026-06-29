@@ -1,0 +1,36 @@
+/* TuBu delete/danger buttons — batch-delete-dock excluded */
+
+.confirm-btn.danger {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.confirm-btn.danger:active {
+  background: #dc2626;
+}
+
+.edit-delete {
+  background: #ef4444;
+  color: #ffffff;
+  border: 1rpx solid #ef4444;
+}
+
+.edit-delete:active {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.bottom-actions .delete-btn {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+.bottom-actions .delete-btn:active {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.plan-action-delete {
+  background: #ef4444;
+}

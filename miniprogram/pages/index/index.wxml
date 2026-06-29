@@ -1,0 +1,280 @@
+<scroll-view class="page" scroll-y type="list">
+  <view class="screen">
+    <view class="hero-card" bindtap="goGearLibrary">
+      <view class="hero-head">
+        <view>
+          <text class="eyebrow">TuBu 装备助手</text>
+          <text class="title">我的装备数据</text>
+        </view>
+        <view class="mini-mark">TB</view>
+      </view>
+
+      <view class="stats-grid">
+        <view class="stat-card">
+          <image class="stat-icon" src="../../assets/stats/count.png" mode="aspectFit"></image>
+          <text class="stat-value">{{summary.gearCount}}</text>
+          <text class="stat-label">装备数量</text>
+        </view>
+        <view class="stat-card">
+          <image class="stat-icon" src="../../assets/stats/weight.png" mode="aspectFit"></image>
+          <text class="stat-value">{{summary.totalGearWeight}}</text>
+          <text class="stat-label">装备重量</text>
+        </view>
+        <view class="stat-card">
+          <image class="stat-icon" src="../../assets/stats/value.png" mode="aspectFit"></image>
+          <text class="stat-value">{{summary.totalGearValue}}</text>
+          <text class="stat-label">装备价值</text>
+        </view>
+        <view class="stat-card">
+          <image class="stat-icon" src="../../assets/stats/usage.png" mode="aspectFit"></image>
+          <text class="stat-value">{{summary.utilization}}</text>
+          <text class="stat-label">利用率</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="plan-card">
+      <view class="section-head">
+        <text class="section-title">我的出行方案</text>
+        <view class="settings-button" bindtap="openComfortSettings">
+          <image
+            class="settings-icon"
+            src="../../assets/icons/settings-gear.svg"
+            mode="aspectFit"
+          />
+        </view>
+      </view>
+
+      <block wx:if="{{!hasPlans}}">
+        <view class="plan-empty">
+          <text class="plan-empty-title">还没有出行方案</text>
+          <text class="plan-empty-desc">创建方案后即可评估背负舒适度与出行重量</text>
+          <button class="dark-button plan-empty-btn" bindtap="goPlans">去创建方案</button>
+        </view>
+      </block>
+
+      <block wx:else>
+        <swiper
+          class="plan-swiper"
+          current="{{activePlanIndex}}"
+          indicator-dots="{{showPlanCarousel}}"
+          indicator-color="rgba(17, 19, 24, 0.12)"
+          indicator-active-color="#111318"
+          bindchange="onPlanSwiperChange"
+        >
+          <block wx:for="{{planCards}}" wx:key="id">
+            <swiper-item>
+              <view class="plan-slide" bindtap="openPlanOverview">
+                <view class="plan-slide-head">
+                  <view class="plan-slide-name-row">
+                    <text class="plan-name">{{item.name}}</text>
+                    <view
+                      class="plan-icon-btn"
+                      data-id="{{item.id}}"
+                      catchtap="openPlanEdit"
+                      aria-label="编辑方案"
+                    >
+                      <text class="plan-icon-glyph plan-icon-glyph--edit">✎</text>
+                    </view>
+                  </view>
+                  <text wx:if="{{item.isDefault}}" class="plan-default-badge">默认</text>
+                </view>
+                <view class="plan-meta">
+                  <text class="plan-meta-route">{{item.routeLabel}}</text>
+                  <view class="daynight-capsule {{item.dayNightToneClass}}">{{item.dayNightLabel}}</view>
+                </view>
+
+                <view class="plan-body">
+                  <view class="comfort-box">
+                    <text class="muted-label">背负舒适度</text>
+                    <view class="gauge-wrap">
+                      <view class="gauge">
+                        <view class="gauge-core"></view>
+                      </view>
+                      <view wx:if="{{item.comfort.gaugeVisible}}" class="gauge-needle-layer">
+                        <view
+                          class="gauge-needle {{item.comfort.gaugeTransition ? '' : 'gauge-needle--instant'}}"
+                          style="transform: rotate({{item.comfort.gaugeRotate}}deg);"
+                        ></view>
+                        <view class="gauge-pivot"></view>
+                      </view>
+                    </view>
+                    <text class="dash-value">{{item.comfort.label}}</text>
+                    <text class="comfort-hint">{{item.comfort.hint}}</text>
+                  </view>
+                  <view class="plan-weight">
+                    <text class="muted-label">当前方案重量</text>
+                    <text class="big-number">{{item.tripWeight}}</text>
+                    <text class="plan-sub-metric">背包 {{item.backpackWeight}}</text>
+                    <text class="plan-sub-metric">热量 {{item.calorieKcalLabel}}</text>
+                    <text
+                      wx:if="{{item.calorieRecommend.visible}}"
+                      class="plan-sub-metric plan-calorie-recommend"
+                    >推荐路餐：{{item.calorieRecommend.label}}</text>
+                    <view class="plan-pack-btn" catchtap="goPacking">去打包</view>
+                  </view>
+                </view>
+              </view>
+            </swiper-item>
+          </block>
+        </swiper>
+      </block>
+
+      <view class="plan-checklist-note" bindtap="onPlanChecklistTap">
+        <text class="plan-checklist-title">{{planChecklistNote.title}}</text>
+        <text class="plan-checklist-desc">{{planChecklistNote.desc}}</text>
+      </view>
+    </view>
+
+    <view class="visual-card">
+      <view class="section-head visual-head">
+        <text class="section-title">装备数据概览</text>
+        <view class="overview-switch overview-switch--scope">
+          <block wx:for="{{overview.scopeSwitches}}" wx:key="id" wx:for-item="scopeItem">
+            <view
+              class="switch-option {{scopeItem.activeClass}}"
+              data-scope="{{scopeItem.id}}"
+              bindtap="setOverviewScope"
+            >{{scopeItem.label}}</view>
+          </block>
+        </view>
+      </view>
+
+      <view wx:if="{{!overview.showEmpty && !overview.showChart}}" class="visual-toolbar">
+        <view class="overview-mode-cycler">
+          <view class="mode-cycler-btn" bindtap="cycleOverviewMode" aria-label="切换到上一项">
+            <text class="mode-cycler-arrow">‹</text>
+          </view>
+          <text class="mode-cycler-label">{{overview.modeLabel}}</text>
+          <view class="mode-cycler-btn" bindtap="cycleOverviewMode" aria-label="切换到下一项">
+            <text class="mode-cycler-arrow">›</text>
+          </view>
+        </view>
+      </view>
+
+      <block wx:if="{{overview.showEmpty}}">
+        <view class="visual-empty-panel">
+          <text class="visual-empty">{{overview.empty.title}}</text>
+          <button class="dark-button" bindtap="onOverviewEmptyTap">{{overview.empty.ctaLabel}}</button>
+        </view>
+      </block>
+
+      <block wx:else>
+        <view class="visual-body {{overview.showChart ? 'visual-body--stacked' : 'visual-body-single'}}">
+          <view class="visual-chart-column">
+            <view class="visual-chart">
+              <pie-chart
+                id="homeOverviewPie"
+                wx:if="{{overview.showChart}}"
+                chart-key="{{overview.chartKey}}"
+                slices="{{overview.pieSlices}}"
+                center-value="{{overview.centerValue}}"
+                center-label="{{overview.centerLabel}}"
+                show-legend="{{false}}"
+                size="300"
+                bind:select="onOverviewPieSelect"
+              ></pie-chart>
+            </view>
+            <view wx:if="{{overview.showChart}}" class="overview-mode-cycler overview-mode-cycler--chart">
+              <view class="mode-cycler-btn" bindtap="cycleOverviewMode" aria-label="切换到上一项">
+                <text class="mode-cycler-arrow">‹</text>
+              </view>
+              <text class="mode-cycler-label">{{overview.modeLabel}}</text>
+              <view class="mode-cycler-btn" bindtap="cycleOverviewMode" aria-label="切换到下一项">
+                <text class="mode-cycler-arrow">›</text>
+              </view>
+            </view>
+          </view>
+          <view wx:if="{{overview.showChart}}" class="legend">
+            <view class="legend-head">
+              <text class="visual-link" bindtap="openPlanOverview">查看总览</text>
+            </view>
+            <block wx:for="{{overview.legendItems}}" wx:key="name" wx:for-index="legendIndex">
+              <view
+                class="legend-row {{overviewPieSelectedIndex === legendIndex ? 'is-active' : ''}}"
+                data-index="{{legendIndex}}"
+                catchtap="onOverviewLegendTap"
+              >
+                <view class="legend-label">
+                  <view class="dot" style="background: {{item.dotColor}};"></view>
+                  <text class="legend-name">{{item.name}}</text>
+                </view>
+                <view class="legend-metrics">
+                  <text class="legend-percent">{{item.percent}}%</text>
+                  <text class="legend-value">{{item.value}}</text>
+                </view>
+              </view>
+            </block>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view class="quick-card">
+      <text class="section-title">快捷入口</text>
+      <view class="action-grid">
+        <view class="action-item" bindtap="goGear">
+          <view class="action-icon action-icon--gear"></view>
+          <text class="action-label">装备库</text>
+        </view>
+        <view class="action-item" bindtap="goAdd">
+          <view class="action-icon action-icon--add"></view>
+          <text class="action-label">新增装备</text>
+        </view>
+        <view class="action-item" bindtap="goPacking">
+          <view class="action-icon action-icon--pack"></view>
+          <text class="action-label">智能打包</text>
+        </view>
+        <view class="action-item" bindtap="goPlans">
+          <view class="action-icon action-icon--plans"></view>
+          <text class="action-label">出行方案</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</scroll-view>
+
+<view wx:if="{{showComfortSettings}}" class="settings-mask modal-viewport-center" catchtap="closeComfortSettings">
+  <view class="settings-panel" catchtap="noop">
+    <text class="settings-title">体感设置</text>
+    <text class="settings-desc">根据身高体重与方案总重量，按体重占比评估背负舒适度</text>
+
+    <view class="settings-field">
+      <text class="settings-label">身高 (cm)</text>
+      <input
+        class="settings-input {{comfortFormErrors.heightCm ? 'settings-input-error' : ''}}"
+        type="digit"
+        value="{{comfortForm.heightCm}}"
+        placeholder="例如 175"
+        adjust-position="{{true}}"
+        cursor-spacing="120"
+        bindinput="onComfortHeightInput"
+      />
+    </view>
+
+    <view class="settings-field">
+      <text class="settings-label">体重 (kg)</text>
+      <input
+        class="settings-input {{comfortFormErrors.weightKg ? 'settings-input-error' : ''}}"
+        type="digit"
+        value="{{comfortForm.weightKg}}"
+        placeholder="例如 65"
+        adjust-position="{{true}}"
+        cursor-spacing="120"
+        bindinput="onComfortWeightInput"
+      />
+    </view>
+
+    <view class="settings-actions">
+      <button class="settings-secondary" bindtap="closeComfortSettings">取消</button>
+      <button class="settings-primary" bindtap="saveComfortSettings">保存</button>
+    </view>
+  </view>
+</view>
+
+<app-loading
+  show="{{showTransitionLoading}}"
+  text="{{transitionLoadingText}}"
+/>
+
+<plan-edit-modal id="planEditModal" bind:saved="onPlanEditSaved" />

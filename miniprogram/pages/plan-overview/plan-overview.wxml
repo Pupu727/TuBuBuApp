@@ -1,0 +1,181 @@
+<page-skeleton show="{{initialLoading}}" text="{{initialLoadingText}}" />
+
+<block wx:if="{{!initialLoading}}">
+<view class="screen {{overview.isEmpty ? 'screen-empty' : ''}}">
+  <view class="hero-card">
+    <view class="hero-head">
+      <view class="hero-main">
+        <text class="plan-name">{{overview.planName}}</text>
+        <view class="plan-meta">
+          <text class="plan-route">{{overview.route}} · </text>
+          <view class="daynight-capsule {{overview.dayNightToneClass}}">{{overview.dayNightLabel}}</view>
+        </view>
+      </view>
+      <text wx:if="{{overview.isDefault}}" class="default-badge">默认</text>
+    </view>
+
+    <view class="stats-grid">
+      <view class="stat-card">
+        <text class="stat-value">{{overview.tripQuantity}}</text>
+        <text class="stat-label">出行件数</text>
+      </view>
+      <view class="stat-card">
+        <text class="stat-value purple">{{overview.tripWeight}}</text>
+        <text class="stat-label">出行重量</text>
+      </view>
+      <view class="stat-card">
+        <text class="stat-value orange">{{overview.backpackWeight}}</text>
+        <text class="stat-label">背包重量</text>
+      </view>
+      <view class="stat-card">
+        <text class="stat-value teal">{{overview.calorieKcalLabel}}</text>
+        <text class="stat-label">热量 kcal</text>
+      </view>
+    </view>
+
+    <view class="stats-grid stats-grid-secondary">
+      <view class="stat-card">
+        <text class="stat-value">{{overview.totalValue}}</text>
+        <text class="stat-label">装备价值</text>
+      </view>
+      <view class="stat-card">
+        <text class="stat-value green">{{overview.packedPercent}}</text>
+        <text class="stat-label">已打包</text>
+      </view>
+      <view class="stat-card stat-card-wide">
+        <text class="stat-value teal">{{overview.dailyCalorieLabel}}</text>
+        <text class="stat-label">日均热量</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{overview.isEmpty}}" class="empty-card">
+    <text class="empty-title">当前方案还没有装备</text>
+    <text class="empty-copy">去打包页添加装备后，这里会按系统展示清单和统计。</text>
+    <button class="dark-button" bindtap="goPacking">去打包</button>
+  </view>
+
+  <block wx:else>
+    <view class="breakdown-card">
+      <text class="section-title">重量构成</text>
+      <text class="section-hint">点击扇区或图例查看详情</text>
+      <pie-chart
+        chart-key="breakdown"
+        slices="{{overview.breakdownPieSlices}}"
+        center-value="{{overview.tripWeight}}"
+        center-label="总重量"
+        size="272"
+      ></pie-chart>
+    </view>
+
+    <view class="chart-card">
+      <view class="chart-head">
+        <text class="section-title">分类占比</text>
+        <view class="overview-switch">
+          <block wx:for="{{categoryOverviewSwitches}}" wx:key="mode" wx:for-item="switchItem">
+            <view
+              class="switch-option {{switchItem.activeClass}}"
+              data-mode="{{switchItem.mode}}"
+              bindtap="setCategoryOverviewMode"
+            >{{switchItem.label}}</view>
+          </block>
+        </view>
+      </view>
+      <text class="section-hint">点击扇区或图例查看详情</text>
+      <pie-chart
+        chart-key="category"
+        slices="{{categoryPieSlices}}"
+        center-value="{{categoryCenterValue}}"
+        center-label="{{categoryCenterLabel}}"
+        size="272"
+      ></pie-chart>
+    </view>
+
+    <scroll-view
+      wx:if="{{overview.showAnchors}}"
+      class="anchor-strip"
+      scroll-x
+      enable-flex
+      show-scrollbar="{{false}}"
+    >
+      <view class="anchor-track">
+        <view
+          wx:for="{{overview.anchors}}"
+          wx:key="id"
+          class="anchor-chip {{item.active ? 'is-active' : ''}}"
+          data-anchor="{{item.id}}"
+          data-category="{{item.categoryId}}"
+          catchtap="onAnchorTap"
+        >
+          <view class="anchor-dot" style="background: {{item.dotColor}};"></view>
+          <text class="anchor-label">{{item.name}}</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="systems-wrap {{overview.showAnchors ? 'has-anchors' : ''}}">
+      <block wx:for="{{overview.sections}}" wx:key="id">
+        <view id="{{item.anchorId}}" class="system-card" style="background: {{item.tintColor}};">
+          <view
+            class="system-head {{overview.useAccordion ? 'is-accordion' : ''}}"
+            data-category="{{item.id}}"
+            catchtap="toggleSection"
+          >
+            <view class="system-accent" style="background: {{item.dotColor}};"></view>
+            <view class="system-main">
+              <view class="system-title-row">
+                <view class="system-title-main">
+                  <text class="system-name">{{item.name}}</text>
+                  <text wx:if="{{item.showCalorieSubtotal && item.calorieLabel}}" class="system-calorie">{{item.calorieLabel}}</text>
+                </view>
+                <view class="system-title-aside">
+                  <text class="system-value">{{item.value}}</text>
+                  <text wx:if="{{overview.useAccordion}}" class="system-caret">{{item.expanded ? '▾' : '▸'}}</text>
+                </view>
+              </view>
+              <view class="system-meta">
+                <text class="system-meta-item">{{item.itemCount}} 件</text>
+                <text class="system-meta-dot">·</text>
+                <text class="system-meta-item">{{item.weight}}</text>
+                <text class="system-meta-dot">·</text>
+                <text class="system-meta-item">{{item.weightPercent}}%</text>
+              </view>
+            </view>
+          </view>
+
+          <view wx:if="{{item.expanded}}" class="system-items">
+            <view wx:for="{{item.items}}" wx:key="id" wx:for-item="gear" class="gear-row">
+              <view class="gear-main">
+                <view class="gear-title-row">
+                  <view class="gear-title-main">
+                    <text class="gear-name">{{gear.name}}</text>
+                    <text wx:if="{{gear.calorieLabel}}" class="gear-calorie">{{gear.calorieLabel}}</text>
+                  </view>
+                  <text wx:if="{{gear.quantityLabel}}" class="gear-qty">{{gear.quantityLabel}}</text>
+                </view>
+                <view class="gear-meta">
+                  <text>{{gear.weight}}</text>
+                  <text>{{gear.price}}</text>
+                </view>
+              </view>
+              <view class="gear-tags">
+                <text class="status-chip {{gear.carryToneClass}}">{{gear.carryLabel}}</text>
+                <text class="status-chip {{gear.statusToneClass}}">{{gear.statusLabel}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </block>
+    </view>
+  </block>
+</view>
+
+<cover-view wx:if="{{!overview.isEmpty}}" class="bottom-bar">
+  <cover-view class="bottom-primary" bindtap="goPacking">去打包</cover-view>
+</cover-view>
+</block>
+
+<app-loading
+  show="{{showTransitionLoading}}"
+  text="{{transitionLoadingText}}"
+/>

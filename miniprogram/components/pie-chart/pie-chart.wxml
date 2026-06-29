@@ -1,0 +1,93 @@
+<view class="pie-chart-wrap">
+
+  <view class="pie-body">
+
+    <view class="pie-stage {{fading ? 'is-fading' : ''}}" style="width: {{size}}rpx; height: {{size}}rpx;">
+
+      <image
+
+        wx:if="{{imageSrc}}"
+
+        id="{{canvasId}}-image"
+
+        class="pie-image"
+
+        src="{{imageSrc}}"
+
+        mode="aspectFit"
+
+        style="width: {{size}}rpx; height: {{size}}rpx;"
+
+        bindtap="onChartTap"
+
+      ></image>
+
+
+
+      <canvas
+
+        id="{{canvasId}}"
+
+        type="2d"
+
+        class="pie-canvas pie-canvas-buffer"
+
+        disable-scroll="true"
+
+        style="width: {{size}}rpx; height: {{size}}rpx;"
+
+      ></canvas>
+
+
+
+      <view class="pie-center" style="width: {{centerWidth}}rpx;">
+
+        <text class="center-value" style="font-size: {{centerValueSize}}rpx;">{{centerValue}}</text>
+
+        <view class="center-label-pill">
+          <text class="center-label" style="font-size: {{centerLabelSize}}rpx;">{{centerLabel}}</text>
+        </view>
+
+      </view>
+
+    </view>
+
+
+
+    <view wx:if="{{showLegend}}" class="pie-legend">
+
+      <view
+
+        wx:for="{{displaySlices}}"
+
+        wx:key="label"
+
+        class="pie-legend-row {{index === selectedIndex ? 'is-active' : ''}}"
+
+        data-index="{{index}}"
+
+        catchtap="onLegendTap"
+
+      >
+
+        <view class="legend-left">
+
+          <view class="legend-dot" style="background: {{item.color}};"></view>
+
+          <text class="legend-name">{{item.label}}</text>
+
+        </view>
+
+        <text class="legend-percent">{{item.percent}}%</text>
+
+        <text class="legend-weight">{{item.weight}}</text>
+
+      </view>
+
+    </view>
+
+  </view>
+
+</view>
+
+

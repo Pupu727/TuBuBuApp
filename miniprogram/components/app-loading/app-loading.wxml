@@ -1,0 +1,12 @@
+<view wx:if="{{show}}" class="loading-mask" catchtap="noop">
+  <view class="loading-panel">
+    <view class="loading-mark">
+      <view class="loading-pack"></view>
+      <view class="loading-dot dot-one"></view>
+      <view class="loading-dot dot-two"></view>
+      <view class="loading-dot dot-three"></view>
+    </view>
+    <text class="loading-title">TuBu</text>
+    <text class="loading-text">{{text}}</text>
+  </view>
+</view>

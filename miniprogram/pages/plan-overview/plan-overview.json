@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "装备总览",
+  "usingComponents": {
+    "pie-chart": "../../components/pie-chart/pie-chart",
+    "app-loading": "../../components/app-loading/app-loading",
+    "page-skeleton": "../../components/page-skeleton/page-skeleton"
+  }
+}

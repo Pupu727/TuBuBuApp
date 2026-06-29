@@ -1,0 +1,31 @@
+<view class="custom-trip-days-picker {{error ? 'is-error' : ''}} {{floating ? 'floating' : ''}}">
+  <view class="picker-trigger" catchtap="toggleOpen">
+    <text class="picker-value {{displayValue ? '' : 'placeholder'}}">{{displayValue || placeholder}}</text>
+    <text class="picker-arrow">{{open ? '▴' : '▾'}}</text>
+  </view>
+
+  <view wx:if="{{open}}" class="picker-mask" catchtap="closePanel"></view>
+
+  <view wx:if="{{open}}" class="picker-panel" catchtap="noop">
+    <view class="panel-head">
+      <text class="panel-title">选择出行天数</text>
+      <text class="panel-tip">夜数自动按天数减 1</text>
+    </view>
+
+    <picker-view
+      class="trip-days-picker-view"
+      indicator-class="trip-days-picker-indicator"
+      value="{{pickerIndexes}}"
+      bindchange="onPickerChange"
+    >
+      <picker-view-column>
+        <view wx:for="{{dayOptions}}" wx:key="*this" class="picker-item">{{item}}天</view>
+      </picker-view-column>
+    </picker-view>
+
+    <view class="panel-actions">
+      <view class="action-btn muted" catchtap="closePanel">取消</view>
+      <view class="action-btn primary" catchtap="confirmSelection">确定</view>
+    </view>
+  </view>
+</view>

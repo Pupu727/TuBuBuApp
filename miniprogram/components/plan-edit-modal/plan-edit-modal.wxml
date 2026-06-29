@@ -1,0 +1,81 @@
+<view wx:if="{{show}}" class="edit-mask form-edit-mask modal-viewport-center" catchtap="onMaskTap">
+  <view class="edit-panel" catchtap="noop">
+    <text class="edit-title">{{isCreating ? '新增方案' : '编辑方案'}}</text>
+    <scroll-view
+      class="edit-panel-scroll"
+      scroll-y
+      enhanced
+      show-scrollbar="{{false}}"
+    >
+      <view class="edit-field">
+        <view class="edit-field-head">
+          <text class="edit-label">方案名称</text>
+          <text class="required-star">*</text>
+          <text wx:if="{{showEditErrors && editErrors.name}}" class="field-error-text">不能为空</text>
+          <text wx:if="{{editLimits.name}}" class="field-error-text">字数超过上限</text>
+        </view>
+        <view class="edit-input-shell {{(showEditErrors && editErrors.name) || editLimits.name ? 'is-error' : ''}}">
+          <input
+            class="edit-input"
+            value="{{editForm.name}}"
+            placeholder="请输入方案名称"
+            adjust-position="{{true}}"
+            cursor-spacing="120"
+            bindinput="onEditNameInput"
+          />
+        </view>
+      </view>
+      <view class="edit-field">
+        <view class="edit-field-head">
+          <text class="edit-label">路线/地点</text>
+          <text wx:if="{{editLimits.route}}" class="field-error-text">字数超过上限</text>
+        </view>
+        <view class="edit-input-shell {{editLimits.route ? 'is-error' : ''}}">
+          <input
+            class="edit-input"
+            value="{{editForm.route}}"
+            placeholder="例如：冬五台山"
+            adjust-position="{{true}}"
+            cursor-spacing="120"
+            bindinput="onEditRouteInput"
+          />
+        </view>
+      </view>
+      <view class="edit-field">
+        <view class="edit-field-head">
+          <text class="edit-label">出行天数</text>
+          <text class="required-star">*</text>
+          <text wx:if="{{showEditErrors && editErrors.days}}" class="field-error-text">不能为空</text>
+        </view>
+        <view class="edit-input-shell {{showEditErrors && editErrors.days ? 'is-error' : ''}}">
+          <custom-trip-days-picker
+            floating="{{true}}"
+            days="{{editForm.days}}"
+            max-days="{{editForm.maxTripDays}}"
+            placeholder="选择几天几夜"
+            bind:change="onEditDaysChange"
+          />
+        </view>
+      </view>
+      <view class="edit-field">
+        <view class="edit-field-head">
+          <text class="edit-label">备注</text>
+          <text wx:if="{{editLimits.remark}}" class="field-error-text">字数超过上限</text>
+        </view>
+        <textarea
+          class="edit-textarea {{editLimits.remark ? 'is-error' : ''}}"
+          value="{{editForm.remark}}"
+          placeholder="补充说明、天气、注意事项等"
+          adjust-position="{{true}}"
+          cursor-spacing="120"
+          bindinput="onEditRemarkInput"
+        />
+      </view>
+      <view class="edit-keyboard-spacer"></view>
+    </scroll-view>
+    <view class="edit-actions">
+      <button class="edit-cancel" bindtap="close">取消</button>
+      <button class="edit-save" bindtap="save">{{isCreating ? '创建' : '保存'}}</button>
+    </view>
+  </view>
+</view>

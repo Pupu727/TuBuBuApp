@@ -1,0 +1,10 @@
+<view wx:if="{{show}}" class="confirm-mask" catchtap="onCancel">
+  <view class="confirm-panel" catchtap="noop">
+    <text class="confirm-title">{{title}}</text>
+    <text class="confirm-content">{{content}}</text>
+    <view class="confirm-actions">
+      <view class="confirm-btn muted" catchtap="onCancel">取消</view>
+      <view class="confirm-btn {{danger ? 'danger' : 'primary'}}" catchtap="onConfirm">{{confirmText}}</view>
+    </view>
+  </view>
+</view>

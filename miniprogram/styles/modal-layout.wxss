@@ -1,0 +1,35 @@
+/**
+ * 弹窗视觉居中：以小程序页面内容区为基准，而非整屏几何中心。
+ * 页面 viewport 已不含系统状态栏与导航栏；底栏占位需计入偏移。
+ */
+
+.modal-mask.modal-viewport-center,
+.edit-mask.modal-viewport-center,
+.settings-mask.modal-viewport-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32rpx;
+  padding-bottom: calc(32rpx + 90rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(32rpx + 90rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.modal-mask.modal-viewport-center--compact,
+.edit-mask.modal-viewport-center--compact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32rpx;
+  padding-bottom: calc(32rpx + 40rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(32rpx + 40rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.modal-mask.modal-viewport-center .edit-modal,
+.edit-mask.modal-viewport-center .edit-panel,
+.settings-mask.modal-viewport-center .settings-panel,
+.modal-mask.modal-viewport-center--compact .edit-modal,
+.edit-mask.modal-viewport-center--compact .edit-panel {
+  transform: translateY(-24rpx);
+}

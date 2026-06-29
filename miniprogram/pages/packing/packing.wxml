@@ -1,0 +1,570 @@
+﻿<page-skeleton show="{{initialLoading}}" text="{{initialLoadingText}}" />
+
+<block wx:if="{{!initialLoading}}">
+<scroll-view class="page" scroll-y>
+  <view class="screen">
+    <view class="guide-card">
+      <view class="guide-row">
+        <view class="guide-main">
+          <text class="guide-badge">智能打包</text>
+          <text class="guide-copy">从装备库展开分类，拖动装备到右侧区域。</text>
+        </view>
+        <view class="help-pill" catchtap="openHelp">? 说明</view>
+      </view>
+      <view class="pack-stats">
+        <view>
+          <text class="stat-value">{{stats.tripQuantity}}</text>
+          <text class="stat-label">出行数量</text>
+        </view>
+        <view>
+          <text class="stat-value purple">{{stats.tripWeight}}</text>
+          <text class="stat-label">出行重量</text>
+        </view>
+        <view>
+          <text class="stat-value orange">{{stats.backpackWeight}}</text>
+          <text class="stat-label">背包重量</text>
+        </view>
+        <view>
+          <text class="stat-value teal">{{stats.calorieKcal}}</text>
+          <text class="stat-label">热量 kcal</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="workbench">
+      <view class="library-panel">
+        <view id="libraryDrop" class="library-card">
+          <view class="library-head">
+            <text class="library-title">装备库</text>
+            <view class="library-head-actions">
+              <text class="library-count">{{gearCount}} 件</text>
+              <view class="library-add-btn" catchtap="openAddGearModal">+新增</view>
+            </view>
+          </view>
+          <view class="plan-select-wrap">
+            <text class="plan-select-label">复制打包方式到当前方案</text>
+            <view id="copyPlanTrigger" class="plan-select-trigger" catchtap="onCopyPlanSegmentTap">
+              <text class="plan-select-value">{{copySourcePlanName}}</text>
+              <text wx:if="{{hasMultiplePlans}}" class="plan-select-arrow">{{showCopyPlanPanel ? '▴' : '▾'}}</text>
+            </view>
+          </view>
+          <block wx:if="{{isGearEmpty}}">
+            <view class="empty-lib">
+              <text>还没有装备</text>
+              <button bindtap="openAddGearModal">添加装备</button>
+            </view>
+          </block>
+          <block wx:else>
+            <block wx:for="{{categories}}" wx:key="id">
+              <view class="category-row" data-category="{{item.id}}" catchtap="toggleCategory">
+                <view class="category-main">
+                  <view class="dot" style="background: {{item.dotColor}};"></view>
+                  <text>{{item.name}}</text>
+                </view>
+                <view class="category-count">
+                  <text>{{item.count}}</text>
+                  <text>{{item.caret}}</text>
+                </view>
+              </view>
+              <view wx:if="{{item.expanded}}" class="gear-stack">
+                <block wx:for="{{item.gears}}" wx:key="id" wx:for-item="gear">
+                  <view
+                    class="pack-gear-card"
+                    data-id="{{gear.id}}"
+                    catchtouchstart="startDrag"
+                    catchtouchmove="moveDrag"
+                    catchtouchend="endDrag"
+                    catchtouchcancel="endDrag"
+                  >
+                    <view class="pack-gear-head">
+                      <text class="pack-gear-name">{{gear.name}}</text>
+                      <view class="pack-gear-tags">
+                        <text wx:if="{{gear.availableQuantity > 1}}" class="pack-gear-qty">x{{gear.availableQuantity}}</text>
+                        <text class="pack-gear-status {{gear.status}}">{{gear.statusLabel}}</text>
+                      </view>
+                    </view>
+                    <view class="pack-gear-meta">
+                      <text>{{gear.weight}}</text>
+                      <text>{{gear.availableQuantity > 1 ? '松手后可选数量' : '拖到右侧加入'}}</text>
+                    </view>
+                  </view>
+                </block>
+              </view>
+            </block>
+          </block>
+        </view>
+      </view>
+
+      <view class="target-panel">
+        <view id="bagDrop" class="pack-section">
+          <view class="section-title-row">
+            <view>
+              <text class="pack-title">装入背包</text>
+              <text class="pack-subtitle">{{bagSection.count}} 件 · {{bagSection.weight}}</text>
+            </view>
+            <view class="icon-chip bag-chip">🎒</view>
+          </view>
+          <block wx:if="{{bagSection.items.length === 0}}">
+            <view class="drop-box">拖入这里表示装入背包</view>
+          </block>
+          <block wx:elif="{{bagSection.items.length <= 3}}">
+            <view class="selected-list">
+              <block wx:for="{{bagSection.items}}" wx:key="gearId">
+                <view class="selected-item">
+                  <view
+                    class="selected-remove-x"
+                    data-id="{{item.gearId}}"
+                    data-target="bag"
+                    catchtap="removeDraftItem"
+                  >×</view>
+                  <view
+                    class="selected-main"
+                    data-id="{{item.gearId}}"
+                    data-target="bag"
+                    catchtouchstart="startDraftDrag"
+                    catchtouchmove="moveDrag"
+                    catchtouchend="endDrag"
+                    catchtouchcancel="endDrag"
+                  >
+                    <text class="selected-name">{{item.name}}</text>
+                    <view class="selected-meta-row">
+                      <text class="selected-category-badge category-{{item.category}}">{{item.categoryName}}</text>
+                      <text class="selected-detail">x{{item.quantity}} · {{item.weight}}</text>
+                    </view>
+                  </view>
+                </view>
+              </block>
+            </view>
+          </block>
+          <block wx:else>
+            <view class="section-list-wrap">
+              <scroll-view class="section-list-scroll" scroll-y enhanced show-scrollbar="{{true}}">
+                <view class="selected-list selected-list--in-scroll">
+                  <block wx:for="{{bagSection.items}}" wx:key="gearId">
+                    <view class="selected-item">
+                      <view
+                        class="selected-remove-x"
+                        data-id="{{item.gearId}}"
+                        data-target="bag"
+                        catchtap="removeDraftItem"
+                      >×</view>
+                      <view
+                        class="selected-main"
+                        data-id="{{item.gearId}}"
+                        data-target="bag"
+                        catchtouchstart="startDraftDrag"
+                        catchtouchmove="moveDrag"
+                        catchtouchend="endDrag"
+                        catchtouchcancel="endDrag"
+                      >
+                        <text class="selected-name">{{item.name}}</text>
+                        <view class="selected-meta-row">
+                          <text class="selected-category-badge category-{{item.category}}">{{item.categoryName}}</text>
+                          <text class="selected-detail">x{{item.quantity}} · {{item.weight}}</text>
+                        </view>
+                      </view>
+                    </view>
+                  </block>
+                </view>
+              </scroll-view>
+              <text class="section-list-hint">共 {{bagSection.items.length}} 件 · 滑动查看更多</text>
+            </view>
+          </block>
+        </view>
+
+        <view id="nonBagDrop" class="pack-section">
+          <view class="section-title-row">
+            <view>
+              <text class="pack-title">非装包装备</text>
+              <text class="pack-subtitle">{{nonBagSection.count}} 件 · {{nonBagSection.weight}}</text>
+            </view>
+            <view class="icon-chip worn-chip">🥾</view>
+          </view>
+          <block wx:if="{{nonBagSection.items.length === 0}}">
+            <view class="drop-box">拖入这里表示非装包</view>
+          </block>
+          <block wx:elif="{{nonBagSection.items.length <= 3}}">
+            <view class="selected-list">
+              <block wx:for="{{nonBagSection.items}}" wx:key="gearId">
+                <view class="selected-item">
+                  <view
+                    class="selected-remove-x"
+                    data-id="{{item.gearId}}"
+                    data-target="nonBag"
+                    catchtap="removeDraftItem"
+                  >×</view>
+                  <view
+                    class="selected-main"
+                    data-id="{{item.gearId}}"
+                    data-target="nonBag"
+                    catchtouchstart="startDraftDrag"
+                    catchtouchmove="moveDrag"
+                    catchtouchend="endDrag"
+                    catchtouchcancel="endDrag"
+                  >
+                    <text class="selected-name">{{item.name}}</text>
+                    <view class="selected-meta-row">
+                      <text class="selected-category-badge category-{{item.category}}">{{item.categoryName}}</text>
+                      <text class="selected-detail">x{{item.quantity}} · {{item.weight}}</text>
+                    </view>
+                  </view>
+                </view>
+              </block>
+            </view>
+          </block>
+          <block wx:else>
+            <view class="section-list-wrap">
+              <scroll-view class="section-list-scroll" scroll-y enhanced show-scrollbar="{{true}}">
+                <view class="selected-list selected-list--in-scroll">
+                  <block wx:for="{{nonBagSection.items}}" wx:key="gearId">
+                    <view class="selected-item">
+                      <view
+                        class="selected-remove-x"
+                        data-id="{{item.gearId}}"
+                        data-target="nonBag"
+                        catchtap="removeDraftItem"
+                      >×</view>
+                      <view
+                        class="selected-main"
+                        data-id="{{item.gearId}}"
+                        data-target="nonBag"
+                        catchtouchstart="startDraftDrag"
+                        catchtouchmove="moveDrag"
+                        catchtouchend="endDrag"
+                        catchtouchcancel="endDrag"
+                      >
+                        <text class="selected-name">{{item.name}}</text>
+                        <view class="selected-meta-row">
+                          <text class="selected-category-badge category-{{item.category}}">{{item.categoryName}}</text>
+                          <text class="selected-detail">x{{item.quantity}} · {{item.weight}}</text>
+                        </view>
+                      </view>
+                    </view>
+                  </block>
+                </view>
+              </scroll-view>
+              <text class="section-list-hint">共 {{nonBagSection.items.length}} 件 · 滑动查看更多</text>
+            </view>
+          </block>
+        </view>
+      </view>
+    </view>
+  </view>
+</scroll-view>
+
+<view wx:if="{{showCopyPlanPanel}}" class="plan-panel-mask" catchtap="closeCopyPlanPanel"></view>
+<view
+  wx:if="{{showCopyPlanPanel}}"
+  class="plan-panel plan-panel--dropdown"
+  style="top: {{planPanelTop}}px; left: {{planPanelLeft}}px; width: {{planPanelWidth}}px;"
+  catchtap="noop"
+>
+  <block wx:for="{{planOptions}}" wx:key="id">
+    <view
+      class="plan-panel-item"
+      data-id="{{item.id}}"
+      catchtap="selectCopyPlanFromPanel"
+    >
+      <text class="plan-panel-name">{{item.name}}</text>
+      <text wx:if="{{item.id === activePlanId}}" class="plan-panel-current">当前</text>
+    </view>
+  </block>
+</view>
+
+<view
+  wx:if="{{dragState.active}}"
+  class="drag-ghost"
+  style="left: {{dragState.x}}px; top: {{dragState.y}}px;"
+>
+  {{dragState.name}}
+</view>
+
+<view wx:if="{{showHelpModal}}" class="help-mask">
+  <view class="help-modal">
+    <view class="help-close" catchtap="closeHelp">×</view>
+    <text class="help-badge">说明</text>
+    <text class="help-title">打包工作台怎么用</text>
+    <text class="help-copy">展开左侧装备分类，按住具体装备卡拖到右侧区域。松手后会加入装入背包或非装包装备，并同步更新顶部统计。</text>
+    <view class="help-list">
+      <view class="help-item">
+        <text class="help-index">1</text>
+        <text class="help-text">点击装备分类，展开该分类下的具体装备。</text>
+      </view>
+      <view class="help-item">
+        <text class="help-index green">2</text>
+        <text class="help-text">拖到装入背包，会计入背包重量。</text>
+      </view>
+      <view class="help-item">
+        <text class="help-index yellow">3</text>
+        <text class="help-text">拖到非装包装备，会计入出行重量，但不计入背包重量。</text>
+      </view>
+    </view>
+    <button class="help-primary" bindtap="closeHelp">知道了</button>
+  </view>
+</view>
+
+<confirm-dialog
+  show="{{showDeleteConfirm}}"
+  title="删除方案"
+  content="删除后方案列表不再显示，方案中的装备清单也会一并移除。"
+  confirm-text="删除"
+  danger="{{true}}"
+  bind:confirm="executeDeletePlan"
+  bind:cancel="closeDeleteConfirm"
+/>
+
+<confirm-dialog
+  show="{{showCopyPlanConfirm}}"
+  title="复制打包方式"
+  content="是否复制「{{pendingCopyFromPlanName}}」的打包方式到当前方案？"
+  confirm-text="确认复制"
+  bind:confirm="confirmCopyPlanPacking"
+  bind:cancel="closeCopyPlanConfirm"
+/>
+
+<view wx:if="{{showDropQuantityModal}}" class="drop-qty-mask modal-mask modal-viewport-center--compact" catchtap="closeDropQuantityModal">
+  <view class="drop-qty-panel" catchtap="noop">
+    <text class="drop-qty-title">加入数量</text>
+    <text class="drop-qty-name">{{pendingDrop.gearName}}</text>
+    <text class="drop-qty-hint">装备库还可选 {{pendingDrop.maxQuantity}} 件</text>
+    <text wx:if="{{dropQuantityExceeded}}" class="drop-qty-error">超出限制</text>
+    <view class="drop-qty-stepper-wrap">
+      <quantity-stepper
+        value="{{dropQuantity}}"
+        min="{{1}}"
+        max="{{pendingDrop.maxQuantity}}"
+        bind:change="onDropQuantityChange"
+        bind:limit="onDropQuantityLimit"
+      />
+    </view>
+    <view class="drop-qty-actions">
+      <view class="drop-qty-btn muted" catchtap="closeDropQuantityModal">取消</view>
+      <view class="drop-qty-btn primary {{dropQuantityExceeded ? 'is-disabled' : ''}}" catchtap="confirmDropQuantity">
+        {{pendingDrop.target === 'bag' ? '装入背包' : '加入非背包'}}
+      </view>
+    </view>
+  </view>
+</view>
+
+<view wx:if="{{showAddGearModal}}" class="modal-mask form-modal-mask modal-viewport-center--compact" catchtap="closeAddGearModal">
+  <view class="edit-modal" catchtap="noop">
+    <view class="modal-close" catchtap="closeAddGearModal">×</view>
+    <text class="modal-title">新增装备</text>
+
+    <scroll-view
+      class="edit-scroll"
+      scroll-y
+      enhanced
+      show-scrollbar="{{false}}"
+    >
+      <view class="edit-form">
+      <view class="edit-form-row">
+        <view id="add-field-name" class="edit-field">
+          <view class="edit-field-head">
+            <text class="edit-label">装备名称</text>
+            <text class="required-star">*</text>
+            <text wx:if="{{showAddGearErrors && addGearErrors.name}}" class="field-error-text">不能为空</text>
+            <text wx:elif="{{addGearLimits.name}}" class="field-error-text">字数超过上限</text>
+          </view>
+          <view class="edit-box {{(showAddGearErrors && addGearErrors.name) || addGearLimits.name ? 'is-error' : ''}}">
+            <input
+              class="edit-box-input"
+              value="{{addGearForm.name}}"
+              placeholder="如 艾王 35+5L"
+              adjust-position="{{true}}"
+              cursor-spacing="120"
+              bindinput="onAddGearInputName"
+            />
+          </view>
+        </view>
+        <view id="add-field-weight" class="edit-field">
+          <view class="edit-field-head">
+            <text class="edit-label">重量</text>
+            <text class="required-star">*</text>
+            <text wx:if="{{showAddGearErrors && addGearErrors.weight}}" class="field-error-text">不能为空</text>
+            <text wx:elif="{{addGearLimits.weight}}" class="field-error-text">超过上限</text>
+          </view>
+          <view class="edit-box edit-box-weight {{(showAddGearErrors && addGearErrors.weight) || addGearLimits.weight ? 'is-error' : ''}}">
+            <input
+              class="edit-box-input edit-box-input-grow"
+              type="digit"
+              value="{{addGearForm.weightValue}}"
+              placeholder="如 1100"
+              adjust-position="{{true}}"
+              cursor-spacing="120"
+              bindinput="onAddGearInputWeight"
+            />
+            <view class="edit-box-units">
+              <view class="edit-box-unit {{addGearForm.weightUnit === 'g' ? 'active' : ''}}" data-unit="g" catchtap="onAddGearWeightUnitTap">g</view>
+              <view class="edit-box-unit {{addGearForm.weightUnit === 'kg' ? 'active' : ''}}" data-unit="kg" catchtap="onAddGearWeightUnitTap">kg</view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="edit-form-row">
+        <view id="add-field-price" class="edit-field">
+          <view class="edit-field-head">
+            <text class="edit-label">价格（元）</text>
+            <text wx:if="{{addGearLimits.price}}" class="field-error-text">超过上限</text>
+          </view>
+          <view class="edit-box {{addGearLimits.price ? 'is-error' : ''}}">
+            <input
+              class="edit-box-input"
+              type="digit"
+              value="{{addGearForm.priceYuan}}"
+              placeholder="可选"
+              adjust-position="{{true}}"
+              cursor-spacing="120"
+              bindinput="onAddGearInputPrice"
+            />
+          </view>
+        </view>
+        <view class="edit-field">
+          <view class="edit-field-head">
+            <text class="edit-label">购买日期</text>
+          </view>
+          <view class="edit-box edit-box-date" catchtap="openAddGearDatePicker">
+            <text class="edit-box-date-text {{addGearForm.purchase_date ? '' : 'placeholder'}}">{{addGearForm.purchase_date || '未设置'}}</text>
+            <text class="edit-box-date-arrow">▾</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="edit-form-row">
+        <view class="edit-field">
+          <view class="edit-field-head">
+            <text class="edit-label">分类</text>
+            <text class="required-star">*</text>
+          </view>
+          <view class="edit-box edit-box-select">
+            <custom-select
+              embedded="{{true}}"
+              elevated="{{true}}"
+              options="{{categoryOptions}}"
+              value="{{addGearForm.category}}"
+              placeholder="选择分类"
+              bind:change="onAddGearCategoryChange"
+            />
+          </view>
+        </view>
+        <view class="edit-field">
+          <view class="edit-field-head">
+            <text class="edit-label">状态</text>
+          </view>
+          <view class="edit-box edit-box-select">
+            <block wx:for="{{[addGearForm.category]}}" wx:key="*this">
+              <custom-select
+                embedded="{{true}}"
+                elevated="{{true}}"
+                options="{{addStatusOptions}}"
+                value="{{addGearForm.status}}"
+                placeholder="选择状态"
+                bind:change="onAddGearStatusChange"
+              />
+            </block>
+          </view>
+        </view>
+        <view class="edit-field edit-field--quantity">
+          <view class="edit-field-head">
+            <text class="edit-label">数量</text>
+            <text wx:if="{{addGearLimits.quantity}}" class="field-error-text">超出限制</text>
+          </view>
+          <view class="edit-box edit-box-quantity {{addGearLimits.quantity ? 'is-error' : ''}}">
+            <quantity-stepper
+              value="{{addGearForm.quantity}}"
+              min="{{1}}"
+              max="{{50}}"
+              bind:change="onAddGearQuantityChange"
+              bind:limit="onAddGearQuantityLimit"
+            />
+          </view>
+        </view>
+      </view>
+
+      <view class="edit-form-row">
+        <view wx:if="{{addGearForm.category === 'supply'}}" id="add-field-calorie" class="edit-field edit-field-full">
+          <view class="edit-field-head">
+            <text class="edit-label">热量</text>
+            <text class="required-star">*</text>
+            <text wx:if="{{showAddGearErrors && addGearErrors.calorie}}" class="field-error-text">不能为空</text>
+            <text wx:elif="{{addGearLimits.calorie}}" class="field-error-text">超过上限</text>
+          </view>
+          <view class="edit-box edit-box-calorie {{(showAddGearErrors && addGearErrors.calorie) || addGearLimits.calorie ? 'is-error' : ''}}">
+            <input
+              class="edit-box-input edit-box-input-grow"
+              type="digit"
+              value="{{addGearForm.calorieKcalValue}}"
+              placeholder="如 450"
+              adjust-position="{{true}}"
+              cursor-spacing="120"
+              bindinput="onAddGearInputCalorie"
+            />
+            <view class="edit-box-unit-suffix">kcal</view>
+          </view>
+        </view>
+        <view wx:else id="add-field-channel" class="edit-field edit-field-full">
+          <view class="edit-field-head">
+            <text class="edit-label">购买渠道</text>
+            <text wx:if="{{addGearLimits.channel}}" class="field-error-text">字数超过上限</text>
+          </view>
+          <view class="edit-box {{addGearLimits.channel ? 'is-error' : ''}}">
+            <input
+              class="edit-box-input"
+              value="{{addGearForm.channel}}"
+              placeholder="如 淘宝、线下店"
+              adjust-position="{{true}}"
+              cursor-spacing="120"
+              bindinput="onAddGearInputChannel"
+            />
+          </view>
+        </view>
+      </view>
+
+      <view id="add-field-remark" class="edit-field field-remark">
+        <view class="edit-field-head">
+          <text class="edit-label">备注</text>
+          <text wx:if="{{addGearLimits.remark}}" class="field-error-text">字数超过上限</text>
+        </view>
+        <textarea
+          class="edit-box edit-box-textarea {{addGearLimits.remark ? 'is-error' : ''}}"
+          value="{{addGearForm.remark}}"
+          placeholder="颜色、用途等"
+          adjust-position="{{true}}"
+          cursor-spacing="120"
+          bindinput="onAddGearInputRemark"
+        />
+      </view>
+      </view>
+    </scroll-view>
+
+    <view class="gear-form-actions">
+      <view class="edit-primary" catchtap="saveAddGear">保存装备</view>
+      <view class="edit-secondary" catchtap="closeAddGearModal">取消</view>
+    </view>
+  </view>
+</view>
+
+<custom-date-picker
+  wx:if="{{showAddGearModal}}"
+  id="packingAddDatePicker"
+  hide-trigger="{{true}}"
+  floating="{{true}}"
+  compact
+  value="{{addGearForm.purchase_date}}"
+  placeholder="未设置"
+  bind:change="onAddGearPurchaseDateChange"
+/>
+
+<view class="bottom-actions">
+  <button class="delete-btn {{canDeletePlan ? '' : 'disabled-btn'}}" bindtap="openDeleteConfirm">删除方案</button>
+  <button bindtap="resetWorkbench">重置</button>
+  <button class="confirm" bindtap="confirmPacking">确认打包</button>
+</view>
+</block>
+
+<app-loading
+  show="{{showTransitionLoading}}"
+  text="{{transitionLoadingText}}"
+/>
+

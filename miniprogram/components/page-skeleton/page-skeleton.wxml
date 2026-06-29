@@ -1,0 +1,11 @@
+<view wx:if="{{show}}" class="page-skeleton">
+  <view class="skeleton-panel">
+    <view class="skeleton-mark">TB</view>
+    <view class="skeleton-card">
+      <view class="skeleton-bar wide"></view>
+      <view class="skeleton-bar"></view>
+      <view class="skeleton-bar short"></view>
+    </view>
+    <text class="skeleton-text">{{text}}</text>
+  </view>
+</view>

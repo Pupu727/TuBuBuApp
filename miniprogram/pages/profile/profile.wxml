@@ -1,0 +1,84 @@
+<scroll-view class="page" scroll-y type="list">
+  <view class="screen">
+    <view class="profile-hero">
+      <view class="profile-hero-top">
+        <view>
+          <text class="profile-eyebrow">TRAIL READY</text>
+          <text class="profile-title">我的徒步装备</text>
+          <text class="profile-desc">本地管理装备库与出行方案，出发前快速核对重量与清单。</text>
+        </view>
+        <view class="profile-mark">TB</view>
+      </view>
+
+      <view class="profile-stats">
+        <view class="profile-stat">
+          <text class="profile-stat-value">{{gearCount}}</text>
+          <text class="profile-stat-label">装备</text>
+        </view>
+        <view class="profile-stat-divider"></view>
+        <view class="profile-stat">
+          <text class="profile-stat-value">{{planCount}}</text>
+          <text class="profile-stat-label">方案</text>
+        </view>
+        <view class="profile-stat-divider"></view>
+        <view class="profile-stat">
+          <text class="profile-stat-value profile-stat-value--compact">{{totalGearWeight}}</text>
+          <text class="profile-stat-label">库重</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section-card">
+      <text class="section-title">当前默认方案</text>
+      <text class="section-plan-name">{{defaultPlanName}}</text>
+      <text class="section-plan-meta">出行重量 {{defaultPlanWeight}}</text>
+    </view>
+
+    <view class="section-card">
+      <text class="section-title">快捷入口</text>
+      <view class="action-grid">
+        <view class="action-item" bindtap="goEquipment">
+          <view class="action-icon action-icon--gear"></view>
+          <text class="action-label">装备库</text>
+        </view>
+        <view class="action-item" bindtap="goPlans">
+          <view class="action-icon action-icon--plans"></view>
+          <text class="action-label">出行方案</text>
+        </view>
+        <view class="action-item" bindtap="goPacking">
+          <view class="action-icon action-icon--pack"></view>
+          <text class="action-label">智能打包</text>
+        </view>
+        <view class="action-item" bindtap="goAddGear">
+          <view class="action-icon action-icon--add"></view>
+          <text class="action-label">新增装备</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section-card">
+      <text class="section-title">数据与同步</text>
+      <view class="setting-row">
+        <view class="setting-icon setting-icon--storage"></view>
+        <view class="setting-copy">
+          <text class="setting-label">存储方式</text>
+          <text class="setting-desc">{{storageMode}}</text>
+        </view>
+      </view>
+      <view class="setting-row setting-row--last">
+        <view class="setting-icon setting-icon--sync"></view>
+        <view class="setting-copy">
+          <text class="setting-label">同步状态</text>
+          <text class="setting-desc">{{syncStatus}}</text>
+        </view>
+      </view>
+    </view>
+
+    <text class="version-text">{{versionLabel}}</text>
+  </view>
+</scroll-view>
+
+<app-loading
+  show="{{showTransitionLoading}}"
+  text="{{transitionLoadingText}}"
+/>

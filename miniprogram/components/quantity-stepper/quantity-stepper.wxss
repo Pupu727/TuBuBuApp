@@ -1,0 +1,95 @@
+.quantity-stepper {
+  width: 100%;
+  height: 80rpx;
+  display: flex;
+  align-items: stretch;
+  box-sizing: border-box;
+  border: 1rpx solid #e3e7ec;
+  border-radius: 18rpx;
+  background: #ffffff;
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.95), 0 2rpx 10rpx rgba(17, 19, 24, 0.04);
+  overflow: hidden;
+}
+
+.quantity-stepper.is-error {
+  border-color: #e74c3c;
+  background: #fff9f9;
+  box-shadow: inset 0 0 0 1rpx rgba(231, 76, 60, 0.08);
+}
+
+.quantity-stepper.is-error .stepper-value-wrap {
+  background: #fff9f9;
+}
+
+.stepper-side {
+  flex: 0 0 64rpx;
+  width: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  box-sizing: border-box;
+}
+
+.stepper-side--minus {
+  border-right: 1rpx solid #e8ebef;
+}
+
+.stepper-side--plus {
+  border-left: 1rpx solid #e8ebef;
+}
+
+.stepper-side:active {
+  background: #e9ebee;
+}
+
+.stepper-side.is-disabled {
+  opacity: 0.38;
+}
+
+.stepper-side.is-disabled:active {
+  background: #f3f4f6;
+}
+
+.stepper-glyph {
+  display: block;
+  width: 28rpx;
+  height: 28rpx;
+  text-align: center;
+  line-height: 28rpx;
+  font-size: 30rpx;
+  font-weight: 900;
+  color: #111318;
+}
+
+.stepper-glyph--minus {
+  font-size: 32rpx;
+  line-height: 26rpx;
+}
+
+.stepper-value-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4rpx;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.stepper-input {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: center;
+  font-size: 28rpx;
+  font-weight: 900;
+  line-height: 80rpx;
+  color: #111318;
+  box-sizing: border-box;
+}

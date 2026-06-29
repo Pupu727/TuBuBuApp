@@ -1,0 +1,18 @@
+<view class="custom-select {{compact ? 'compact' : ''}} {{embedded ? 'embedded' : ''}} {{error ? 'is-error' : ''}} {{elevated ? 'elevated' : ''}}">
+  <view class="select-trigger" catchtap="toggleOpen">
+    <text class="select-value {{displayLabel ? '' : 'placeholder'}}">{{displayLabel || placeholder}}</text>
+    <text class="select-arrow">{{open ? '▴' : '▾'}}</text>
+  </view>
+  <view wx:if="{{open}}" class="select-mask {{elevated ? 'elevated-mask' : ''}}" catchtap="closeDropdown"></view>
+  <view wx:if="{{open}}" class="select-dropdown {{elevated ? 'elevated-panel' : ''}}" catchtap="noop">
+    <view
+      wx:for="{{options}}"
+      wx:key="id"
+      class="select-option {{item.id === value ? 'active' : ''}}"
+      data-id="{{item.id}}"
+      catchtap="onSelect"
+    >
+      <text class="select-option-label">{{item.name}}</text>
+    </view>
+  </view>
+</view>
