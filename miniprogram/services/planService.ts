@@ -1,5 +1,6 @@
 import { planItemRepository, tripPlanRepository } from '../repositories/storageRepository'
 import type { PlanItem, TripPlan, TripType } from '../utils/models'
+import { isCompletedTripPlan, isPlanDateOnOrAfterToday, resolveNearestUpcomingPlan } from '../utils/planDate'
 
 export interface PlanFormInput {
   name: string
@@ -48,6 +49,14 @@ const validatePlanInput = (input: PlanFormInput): string | null => {
     return '请输入有效出行天数'
   }
 
+  if (!input.start_date.trim()) {
+    return '请选择出行日期'
+  }
+
+  if (!isPlanDateOnOrAfterToday(input.start_date)) {
+    return '出行日期不能早于今天'
+  }
+
   if (!Number.isFinite(input.target_weight_g) || input.target_weight_g < 0) {
     return '请输入有效目标重量'
   }
@@ -73,35 +82,6 @@ const getActivePlanById = (id: string): TripPlan | undefined => {
   return activePlans().find((plan) => plan.id === id)
 }
 
-const saveDefaultState = (planId: string): TripPlan | undefined => {
-  const timestamp = now()
-  let selectedPlan: TripPlan | undefined
-  const plans = tripPlanRepository.list().map((plan) => {
-    if (plan.deleted) {
-      return plan
-    }
-
-    const isDefault = plan.id === planId
-    const nextPlan = {
-      ...plan,
-      is_default: isDefault,
-      updated_at: isDefault || plan.is_default ? timestamp : plan.updated_at,
-    }
-
-    if (isDefault) {
-      selectedPlan = nextPlan
-    }
-
-    return nextPlan
-  })
-
-  if (selectedPlan) {
-    tripPlanRepository.saveAll(plans)
-  }
-
-  return selectedPlan
-}
-
 const copyPlanItem = (item: PlanItem, planId: string): PlanItem => {
   const timestamp = now()
 
@@ -114,6 +94,22 @@ const copyPlanItem = (item: PlanItem, planId: string): PlanItem => {
     created_at: timestamp,
     updated_at: timestamp,
   }
+}
+
+export const resolveActivePlanId = (): string => {
+  const plans = activePlans().filter((plan) => !isCompletedTripPlan(plan.start_date))
+
+  if (!plans.length) {
+    return ''
+  }
+
+  const upcoming = resolveNearestUpcomingPlan(plans)
+
+  if (upcoming) {
+    return upcoming.planId
+  }
+
+  return plans[0].id
 }
 
 export const listPlans = (): TripPlan[] => {
@@ -146,13 +142,12 @@ export const createPlan = (input: PlanFormInput): PlanMutationResult => {
   }
 
   const timestamp = now()
-  const hasDefaultPlan = activePlans().some((plan) => plan.is_default)
   const plan: TripPlan = {
     id: createId(),
     deleted: false,
     created_at: timestamp,
     updated_at: timestamp,
-    is_default: !hasDefaultPlan,
+    is_default: false,
     ...inputToPlanPatch(input),
   }
 
@@ -186,13 +181,7 @@ export const setDefaultPlan = (id: string): PlanMutationResult => {
     return { ok: false, message: '方案不存在或已删除' }
   }
 
-  const plan = saveDefaultState(id)
-
-  if (!plan) {
-    return { ok: false, message: '方案不存在或已删除' }
-  }
-
-  return { ok: true, plan }
+  return { ok: true, plan: getActivePlanById(id) as TripPlan }
 }
 
 export const copyPlan = (id: string): PlanMutationResult => {
@@ -249,14 +238,6 @@ export const softDeletePlan = (id: string): PlanMutationResult => {
   })
 
   planItemRepository.saveAll(nextPlanItems)
-
-  if (sourcePlan.is_default) {
-    const nextDefaultPlan = activePlans().find((plan) => plan.id !== id)
-
-    if (nextDefaultPlan) {
-      saveDefaultState(nextDefaultPlan.id)
-    }
-  }
 
   return { ok: true, plan: deletedPlan }
 }

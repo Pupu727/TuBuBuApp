@@ -1,4 +1,4 @@
-﻿<scroll-view class="page" scroll-y type="list">
+<scroll-view class="page" scroll-y type="list">
   <view class="screen">
     <view class="page-head">
       <view class="page-head-left">
@@ -8,13 +8,48 @@
       <view class="add-plan-btn" bindtap="openCreatePlan">+新增</view>
     </view>
 
-    <view wx:if="{{plans.length === 0}}" class="empty">
-      <text class="empty-text">还没有方案</text>
-      <button class="dark-button" bindtap="goPacking">去打包</button>
+    <view class="plans-index {{pageHeader.hasPlans ? '' : 'plans-index--empty'}}">
+      <block wx:if="{{pageHeader.hasPlans}}">
+        <text class="plans-index-spotlight-title">{{pageHeader.spotlightTitle}}</text>
+        <view wx:if="{{pageHeader.showUpcomingInsight}}" class="plans-index-insight">
+          <text class="plans-index-insight-text">「{{pageHeader.insightRouteLabel}}」</text>
+          <block wx:if="{{pageHeader.insightDepartToday}}">
+            <view class="trip-date-capsule {{pageHeader.insightCountdownToneClass}}">今天出发</view>
+            <text class="plans-index-insight-text">· {{pageHeader.insightDateLabel}}</text>
+          </block>
+          <block wx:else>
+            <text class="plans-index-insight-text">还有</text>
+            <view class="trip-date-capsule {{pageHeader.insightCountdownToneClass}}">{{pageHeader.insightDaysUntil}} 天</view>
+            <text class="plans-index-insight-text">出发 · {{pageHeader.insightDateLabel}}</text>
+          </block>
+        </view>
+        <text wx:else class="plans-index-insight-text plans-index-insight-text--solo">{{pageHeader.insightText}}</text>
+        <view class="plans-index-metrics">
+          <block wx:for="{{pageHeader.metrics}}" wx:key="label">
+            <view wx:if="{{index > 0}}" class="plans-index-metric-divider"></view>
+            <view class="plans-index-metric">
+              <text class="plans-index-metric-value">{{item.value}}</text>
+              <text class="plans-index-metric-label">{{item.label}}</text>
+            </view>
+          </block>
+        </view>
+      </block>
+      <text wx:else class="plans-index-empty-text">{{pageHeader.insightText}}</text>
     </view>
 
-    <view wx:else class="plan-grid">
-    <block wx:for="{{plans}}" wx:key="id">
+    <view wx:if="{{upcomingCount > 0}}" class="plans-section-label">
+      <text class="plans-section-title">待出行</text>
+      <text class="plans-section-count">{{upcomingCount}} 个</text>
+    </view>
+
+    <view wx:if="{{upcomingCount === 0}}" class="empty">
+      <text class="empty-title">{{completedCount > 0 ? '暂无待出行方案' : '还没有出行方案'}}</text>
+      <text class="empty-desc">{{completedCount > 0 ? '可以创建新方案，或展开下方已出行记录' : '创建方案后即可管理出行装备和重量统计'}}</text>
+      <button class="dark-button" bindtap="openCreatePlan">创建方案</button>
+    </view>
+
+    <view wx:if="{{upcomingCount > 0}}" class="plan-grid">
+    <block wx:for="{{upcomingPlans}}" wx:key="id">
       <view
         class="plan-swipe"
         data-id="{{item.id}}"
@@ -48,7 +83,6 @@
           <view class="name-row">
             <view class="name-title-wrap">
               <text class="plan-name">{{item.name}}</text>
-              <text wx:if="{{item.isDefault}}" class="badge">默认</text>
             </view>
             <view class="name-actions">
               <view class="plan-icon-btn" data-id="{{item.id}}" catchtap="openEditPlan" aria-label="编辑方案">
@@ -59,13 +93,115 @@
               </view>
             </view>
           </view>
-          <view class="plan-meta">
+          <view class="plan-detail-grid">
             <text class="plan-meta-route">{{item.route || '暂无路线'}}</text>
+            <view class="plan-tag-stack">
+              <view class="daynight-capsule {{item.dayNightToneClass}}">{{item.dayNightLabel}}</view>
+              <view class="pack-capsule {{item.packedCapsuleToneClass}}">{{item.packedCapsuleLabel}}</view>
+            </view>
+            <text class="plan-stats-line {{item.hasItems ? '' : 'plan-stats-line--empty'}}">{{item.statsLine}}</text>
+            <text class="plan-remark-preview {{item.hasRemark ? '' : 'plan-remark-preview--empty'}}">{{item.remarkPreview}}</text>
+          </view>
+          <view class="pack-progress">
+            <view class="pack-progress-track">
+              <view
+                wx:if="{{item.hasTripSchedule}}"
+                class="pack-progress-fill {{item.tripCountdownToneClass}}"
+                style="width: {{item.tripCountdownPercentNum}}%;"
+              ></view>
+              <view wx:else class="pack-progress-placeholder"></view>
+            </view>
           </view>
         </view>
         <view class="plan-footer">
-          <view class="daynight-capsule {{item.dayNightToneClass}}">{{item.dayNightLabel}}</view>
-          <text class="plan-weight">{{item.weight}}</text>
+          <view class="trip-date-capsule {{item.tripDateToneClass}}">{{item.tripDateLabel}}</view>
+          <view class="plan-weight-wrap">
+            <text class="plan-weight-label">出行</text>
+            <text class="plan-weight">{{item.weight}}</text>
+          </view>
+        </view>
+        </view>
+      </view>
+    </block>
+    </view>
+
+    <view wx:if="{{completedCount > 0}}" class="plans-section-toggle" catchtap="toggleCompletedPlans">
+      <text class="plans-section-title">已出行</text>
+      <text class="plans-section-count">{{completedCount}} 个</text>
+      <text class="plans-section-caret">{{showCompletedPlans ? '▴' : '▾'}}</text>
+    </view>
+
+    <view wx:if="{{showCompletedPlans && completedCount > 0}}" class="plan-grid plan-grid--completed">
+    <block wx:for="{{completedPlans}}" wx:key="id">
+      <view
+        class="plan-swipe"
+        data-id="{{item.id}}"
+        bindtouchstart="onPlanTouchStart"
+        bindtouchmove="onPlanTouchMove"
+        bindtouchend="onPlanTouchEnd"
+        bindtouchcancel="onPlanTouchEnd"
+      >
+        <view
+          wx:if="{{openSwipePlanId === item.id || swipingPlanId === item.id}}"
+          class="plan-actions"
+          style="width: {{swipingPlanId === item.id ? swipeRevealPx : swipeActionWidthPx}}px;"
+        >
+          <view class="plan-action plan-action-delete" data-id="{{item.id}}" catchtap="confirmDeletePlan" aria-label="删除方案">
+            <view class="trash-icon">
+              <view class="trash-lid"></view>
+              <view class="trash-can">
+                <view class="trash-line"></view>
+                <view class="trash-line"></view>
+              </view>
+            </view>
+          </view>
+        </view>
+        <view
+          class="plan-card plan-card--completed"
+          data-id="{{item.id}}"
+          style="transform: translateX({{swipingPlanId === item.id ? swipeOffsetPx : (openSwipePlanId === item.id ? -swipeActionWidthPx : 0)}}px);"
+          bindtap="openPacking"
+        >
+        <view class="plan-main">
+          <view class="name-row">
+            <view class="name-title-wrap">
+              <text class="plan-name">{{item.name}}</text>
+            </view>
+            <view class="name-actions">
+              <view class="plan-icon-btn" data-id="{{item.id}}" catchtap="openEditPlan" aria-label="编辑方案">
+                <text class="plan-icon-glyph plan-icon-glyph--edit">✎</text>
+              </view>
+              <view class="plan-icon-btn plan-icon-btn--overview" data-id="{{item.id}}" catchtap="openPlanOverview" aria-label="方案装备总览">
+                <text class="plan-icon-glyph plan-icon-glyph--list">≡</text>
+              </view>
+            </view>
+          </view>
+          <view class="plan-detail-grid">
+            <text class="plan-meta-route">{{item.route || '暂无路线'}}</text>
+            <view class="plan-tag-stack">
+              <view class="daynight-capsule {{item.dayNightToneClass}}">{{item.dayNightLabel}}</view>
+              <view class="pack-capsule {{item.packedCapsuleToneClass}}">{{item.packedCapsuleLabel}}</view>
+            </view>
+            <text class="plan-stats-line {{item.hasItems ? '' : 'plan-stats-line--empty'}}">{{item.statsLine}}</text>
+            <text class="plan-remark-preview {{item.hasRemark ? '' : 'plan-remark-preview--empty'}}">{{item.remarkPreview}}</text>
+          </view>
+          <view class="pack-progress">
+            <view class="pack-progress-track">
+              <view
+                wx:if="{{item.hasTripSchedule}}"
+                class="pack-progress-fill {{item.tripCountdownToneClass}}"
+                style="width: {{item.tripCountdownPercentNum}}%;"
+              ></view>
+              <view wx:else class="pack-progress-placeholder"></view>
+            </view>
+          </view>
+        </view>
+        <view class="plan-footer">
+          <view class="trip-date-capsule {{item.tripDateToneClass}}">{{item.tripDateLabel}}</view>
+          <view class="plan-weight-wrap">
+            <text class="plan-weight-label">出行</text>
+            <text class="plan-weight">{{item.weight}}</text>
+          </view>
         </view>
         </view>
       </view>
@@ -94,11 +230,10 @@
 
 <confirm-dialog
   show="{{showDeleteConfirm}}"
-  title="删除方案"
-  content="删除后方案列表不再显示，方案中的装备快照也会一并移除。"
+  title="{{deleteConfirmTitle}}"
+  content="{{deleteConfirmContent}}"
   confirm-text="删除"
   danger="{{true}}"
   bind:confirm="executeDeletePlan"
   bind:cancel="closeDeleteConfirm"
 />
-

@@ -1,6 +1,7 @@
 import { planItemRepository } from '../repositories/storageRepository'
 import type { CarryType, GearCategory, PlanItem } from '../utils/models'
 import { GEAR_CATEGORY_NAMES } from '../utils/gearMeta'
+import { isCompletedTripPlan } from '../utils/planDate'
 import { listGears } from './gearService'
 import { createPlan, getPlanById, listPlans } from './planService'
 import { createPlanItemFromGear } from './planItemService'
@@ -37,6 +38,11 @@ export type CreatePlanFromPackingResult =
   | { ok: false; message: string }
 
 export interface CopyablePlanOption {
+  id: string
+  name: string
+}
+
+export interface SwitchablePlanOption {
   id: string
   name: string
 }
@@ -104,6 +110,31 @@ const saveUpdatedPlanItems = (planId: string, planItems: PlanItem[]): void => {
   planItemRepository.saveAll([...nextItems, ...planItems])
 }
 
+export const savePackingToPlan = (planId: string, items: PackingDraftInput[]): CreatePlanFromPackingResult => {
+  if (!planId) {
+    return { ok: false, message: '当前没有可保存的方案' }
+  }
+
+  const plan = getPlanById(planId)
+
+  if (!plan) {
+    return { ok: false, message: '方案不存在或已删除' }
+  }
+
+  const gears = listGears()
+  const missingItem = items.find((item) => !gears.some((gear) => gear.id === item.gearId))
+
+  if (missingItem) {
+    return { ok: false, message: '装备不存在或已删除' }
+  }
+
+  const planItems = createPlanItems(planId, items, gears)
+
+  saveUpdatedPlanItems(planId, planItems)
+
+  return { ok: true, planId, mode: 'updated' }
+}
+
 export const createPlanFromPacking = (input: CreatePlanFromPackingInput): CreatePlanFromPackingResult => {
   if (input.items.length === 0) {
     return { ok: false, message: '请先加入装备' }
@@ -120,11 +151,7 @@ export const createPlanFromPacking = (input: CreatePlanFromPackingInput): Create
   const existingPlanId = sourcePlan ? sourcePlan.id : ''
 
   if (existingPlanId) {
-    const planItems = createPlanItems(existingPlanId, input.items, gears)
-
-    saveUpdatedPlanItems(existingPlanId, planItems)
-
-    return { ok: true, planId: existingPlanId, mode: 'updated' }
+    return savePackingToPlan(existingPlanId, input.items)
   }
 
   const planResult = createPlan({
@@ -179,6 +206,23 @@ export const hasCopyablePackingContent = (planId: string): boolean => {
 export const getCopyablePlanOptions = (activePlanId: string): CopyablePlanOption[] => {
   const options = listPlans()
     .filter((plan) => hasCopyablePackingContent(plan.id) || plan.id === activePlanId)
+    .map((plan) => ({
+      id: plan.id,
+      name: plan.name,
+    }))
+
+  const currentPlan = options.find((plan) => plan.id === activePlanId)
+
+  if (!currentPlan) {
+    return options
+  }
+
+  return [currentPlan, ...options.filter((plan) => plan.id !== activePlanId)]
+}
+
+export const getSwitchablePlanOptions = (activePlanId: string): SwitchablePlanOption[] => {
+  const options = listPlans()
+    .filter((plan) => !isCompletedTripPlan(plan.start_date))
     .map((plan) => ({
       id: plan.id,
       name: plan.name,

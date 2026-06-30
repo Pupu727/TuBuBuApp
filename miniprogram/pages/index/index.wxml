@@ -65,7 +65,7 @@
           <block wx:for="{{planCards}}" wx:key="id">
             <swiper-item>
               <view class="plan-slide" bindtap="openPlanOverview">
-                <view class="plan-slide-head">
+                <view class="plan-slide-top">
                   <view class="plan-slide-name-row">
                     <text class="plan-name">{{item.name}}</text>
                     <view
@@ -77,11 +77,14 @@
                       <text class="plan-icon-glyph plan-icon-glyph--edit">✎</text>
                     </view>
                   </view>
-                  <text wx:if="{{item.isDefault}}" class="plan-default-badge">默认</text>
-                </view>
-                <view class="plan-meta">
-                  <text class="plan-meta-route">{{item.routeLabel}}</text>
-                  <view class="daynight-capsule {{item.dayNightToneClass}}">{{item.dayNightLabel}}</view>
+                  <view class="trip-date-capsule {{item.tripDateToneClass}}">{{item.tripDateLabel}}</view>
+                  <view class="plan-meta">
+                    <text class="plan-meta-route">{{item.routeLabel}}</text>
+                    <view class="daynight-capsule {{item.dayNightToneClass}}">{{item.dayNightLabel}}</view>
+                  </view>
+                  <view wx:if="{{item.showTripCountdown}}" class="trip-countdown-cell">
+                    <text class="trip-countdown-text {{item.tripDateToneClass}}">{{item.tripCountdownLabel}}</text>
+                  </view>
                 </view>
 
                 <view class="plan-body">
@@ -105,7 +108,10 @@
                   <view class="plan-weight">
                     <text class="muted-label">当前方案重量</text>
                     <text class="big-number">{{item.tripWeight}}</text>
-                    <text class="plan-sub-metric">背包 {{item.backpackWeight}}</text>
+                    <view class="plan-sub-metric-row">
+                      <text class="plan-sub-metric">背包 {{item.backpackWeight}}</text>
+                      <text wx:if="{{item.backpackWeightJinLabel}}" class="plan-sub-metric plan-sub-metric--jin">(≈{{item.backpackWeightJinLabel}}斤)</text>
+                    </view>
                     <text class="plan-sub-metric">热量 {{item.calorieKcalLabel}}</text>
                     <text
                       wx:if="{{item.calorieRecommend.visible}}"

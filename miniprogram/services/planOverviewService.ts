@@ -12,6 +12,7 @@ import {
 import type { CarryType, GearCategory, GearStatus, PackedStatus, PlanItem } from '../utils/models'
 import { listGears } from './gearService'
 import { formatDayNight, resolveDayNightToneClass } from '../utils/tripMeta'
+import { formatPlanDateCapsule, resolveTripDateToneClass } from '../utils/planDate'
 import { sortPieSlicesByValueAsc } from '../utils/pieChart'
 
 const EXPAND_ALL_THRESHOLD = 10
@@ -92,14 +93,17 @@ export interface PlanOverviewView {
   route: string
   dayNightLabel: string
   dayNightToneClass: string
-  isDefault: boolean
+  tripDateLabel: string
+  tripDateToneClass: string
   isEmpty: boolean
   useAccordion: boolean
   showAnchors: boolean
   tripQuantity: number
   tripWeightG: number
   tripWeight: string
+  backpackWeightG: number
   backpackWeight: string
+  backpackWeightJinLabel: string
   totalValue: string
   calorieKcal: number
   calorieKcalLabel: string
@@ -346,7 +350,7 @@ const buildBreakdownPieSlices = (
   if (breakdown.baseWeightG > 0) {
     slices.push({
       color: '#8067d8',
-      label: '基础重量',
+      label: '背包重量',
       percent: tripWeightG > 0 ? ((breakdown.baseWeightG / tripWeightG) * 100).toFixed(1) : '0.0',
       weight: breakdown.baseWeight,
       value: breakdown.baseWeightG,
@@ -356,7 +360,7 @@ const buildBreakdownPieSlices = (
   if (breakdown.wornWeightG > 0) {
     slices.push({
       color: '#34b979',
-      label: '装备重量',
+      label: '基础重量',
       percent: tripWeightG > 0 ? ((breakdown.wornWeightG / tripWeightG) * 100).toFixed(1) : '0.0',
       weight: breakdown.wornWeight,
       value: breakdown.wornWeightG,
@@ -383,7 +387,8 @@ const emptyOverview = (planId: string): PlanOverviewView => {
     route: '暂无路线',
     dayNightLabel: '1天0夜',
     dayNightToneClass: resolveDayNightToneClass(1),
-    isDefault: false,
+    tripDateLabel: '未排期',
+    tripDateToneClass: 'trip-date--unset',
     isEmpty: true,
     useAccordion: false,
     showAnchors: false,
@@ -435,6 +440,10 @@ export const getPlanOverview = (planId: string): PlanOverviewView => {
   }, 0)
   const totalValueCent = items.reduce((sum, item) => sum + itemValueCent(item), 0)
   const calorieKcal = items.reduce((sum, item) => sum + itemCalorieKcal(item), 0)
+  const backpackWeightJin = backpackWeightG > 0 ? backpackWeightG / 500 : 0
+  const backpackWeightJinLabel = backpackWeightJin > 0
+    ? backpackWeightJin.toFixed(backpackWeightJin >= 10 ? 0 : 1).replace(/\.0$/, '')
+    : ''
   const useAccordion = tripQuantity >= EXPAND_ALL_THRESHOLD
   const showAnchors = useAccordion
   const sections: PlanOverviewSectionView[] = []
@@ -520,14 +529,17 @@ export const getPlanOverview = (planId: string): PlanOverviewView => {
     route: plan.route || '暂无路线',
     dayNightLabel: formatDayNight(plan.days),
     dayNightToneClass: resolveDayNightToneClass(plan.days),
-    isDefault: plan.is_default,
+    tripDateLabel: formatPlanDateCapsule(plan.start_date),
+    tripDateToneClass: resolveTripDateToneClass(plan.start_date),
     isEmpty: items.length <= 0,
     useAccordion,
     showAnchors,
     tripQuantity,
     tripWeightG,
     tripWeight: tripWeightG > 0 ? formatWeight(tripWeightG) : '--',
+    backpackWeightG,
     backpackWeight: backpackWeightG > 0 ? formatWeight(backpackWeightG) : '--',
+    backpackWeightJinLabel,
     totalValue: totalValueCent > 0 ? formatPriceYuan(totalValueCent) : '--',
     calorieKcal,
     calorieKcalLabel: `${Math.round(calorieKcal)}`,

@@ -4,13 +4,88 @@
       <view class="hero-copy">
         <text class="hero-kicker">LOCAL GEAR PARSE</text>
         <text class="hero-title">智能添加入口</text>
-        <text class="hero-desc">批量输入装备名称，后续用本地规则生成重量、价格、分类和备注。</text>
+        <text class="hero-desc">粘贴多行装备文本，本地规则解析重量、价格、分类和数量，预览确认后保存。</text>
         <view class="hero-tags">
           <text>本地规则</text>
           <text>预览后保存</text>
         </view>
       </view>
-      <view class="hero-badge">AI</view>
+      <view class="hero-badge">Parse</view>
+    </view>
+
+    <view class="parse-card form-card">
+      <view class="form-title-row">
+        <view class="title-mark title-mark--parse"></view>
+        <text class="section-title">智能解析</text>
+      </view>
+
+      <textarea
+        class="parse-input"
+        value="{{parseText}}"
+        placeholder="每行一件装备，例如：&#10;艾王35+5L 背包 1100g 125元&#10;MH500冲锋衣 450g 433元&#10;能量胶 40g 6元 x4"
+        maxlength="-1"
+        adjust-position="{{true}}"
+        cursor-spacing="120"
+        bindinput="onParseInput"
+      />
+
+      <view class="parse-actions">
+        <view class="parse-secondary" bindtap="fillParseExample">填入示例</view>
+        <view class="parse-primary" bindtap="runSmartParse">解析预览</view>
+      </view>
+    </view>
+
+    <view wx:if="{{showParsePreview}}" class="preview-card form-card">
+      <view class="form-title-row">
+        <view class="title-mark title-mark--preview"></view>
+        <text class="section-title">解析结果</text>
+        <text class="preview-count">{{parseSummaryText}}</text>
+      </view>
+
+      <block wx:if="{{parseItems.length === 0}}">
+        <text class="preview-empty">请输入至少一行装备文本</text>
+      </block>
+
+      <block wx:else>
+        <view class="preview-list">
+          <block wx:for="{{parseItems}}" wx:key="lineIndex">
+            <view
+              class="preview-row {{item.rowClass}} {{item.included && item.ok ? 'is-selected' : ''}}"
+              data-index="{{index}}"
+              bindtap="toggleParseItem"
+            >
+              <view class="preview-check {{item.included && item.ok ? 'is-active' : ''}}">
+                <text wx:if="{{item.included && item.ok}}">✓</text>
+              </view>
+              <view class="preview-body">
+                <text class="preview-name">{{item.ok ? item.name : item.rawLine}}</text>
+                <text wx:if="{{item.ok}}" class="preview-meta">{{item.categoryLabel}} · {{item.weightLabel}} · {{item.priceLabel}} · x{{item.quantity}}</text>
+                <text wx:else class="preview-error">{{item.errorMessage}}</text>
+              </view>
+            </view>
+          </block>
+        </view>
+
+        <view class="save-target-row">
+          <text class="save-target-label">保存到</text>
+          <view class="save-target-switch">
+            <view
+              class="save-target-option {{saveTarget === 'gear_library' ? 'is-active' : ''}}"
+              data-target="gear_library"
+              bindtap="selectSaveTarget"
+            >装备库</view>
+            <view
+              class="save-target-option {{saveTarget === 'default_plan' ? 'is-active' : ''}} {{hasDefaultPlan ? '' : 'is-disabled'}}"
+              data-target="default_plan"
+              bindtap="selectSaveTarget"
+            >{{defaultPlanLabel}}</view>
+          </view>
+        </view>
+
+        <view wx:if="{{savableParseCount > 0}}" class="parse-save-row">
+          <view class="parse-save-button" bindtap="openSaveConfirm">确认保存 {{savableParseCount}} 项</view>
+        </view>
+      </block>
     </view>
 
     <view class="form-card">
@@ -215,6 +290,24 @@
   value="{{form.purchase_date}}"
   placeholder="未设置"
   bind:change="onPurchaseDateChange"
+/>
+
+<confirm-dialog
+  show="{{showParseSaveConfirm}}"
+  title="确认保存解析结果"
+  content="{{parseSaveConfirmContent}}"
+  confirm-text="确认保存"
+  bind:confirm="confirmSaveParse"
+  bind:cancel="closeParseSaveConfirm"
+/>
+
+<confirm-dialog
+  show="{{showDuplicateGearConfirm}}"
+  title="装备已存在"
+  content="{{duplicateGearConfirmContent}}"
+  confirm-text="增加数量"
+  bind:confirm="confirmDuplicateGearQuantity"
+  bind:cancel="closeDuplicateGearConfirm"
 />
 
 <app-loading

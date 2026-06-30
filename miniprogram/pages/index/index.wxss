@@ -212,19 +212,66 @@ button::after {
   box-sizing: border-box;
 }
 
-.plan-slide-head {
-  display: flex;
+.plan-slide-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 12rpx;
+  row-gap: 8rpx;
   align-items: center;
-  gap: 12rpx;
   min-width: 0;
 }
 
 .plan-slide-name-row {
-  flex: 1;
+  grid-column: 1;
+  grid-row: 1;
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 4rpx;
+}
+
+.plan-slide-top .trip-date-capsule {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+}
+
+.plan-slide-top .plan-meta {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 0;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.trip-countdown-cell {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+  align-self: center;
+  min-width: 0;
+}
+
+.trip-countdown-text {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.5rpx;
+  white-space: nowrap;
+  background: transparent;
+}
+
+.plan-slide .trip-countdown-text.trip-date--today,
+.plan-slide .trip-countdown-text.trip-date--soon,
+.plan-slide .trip-countdown-text.trip-date--near,
+.plan-slide .trip-countdown-text.trip-date--far,
+.plan-slide .trip-countdown-text.trip-date--past,
+.plan-slide .trip-countdown-text.trip-date--unset {
+  background: transparent;
 }
 
 .plan-slide .plan-name {
@@ -270,17 +317,13 @@ button::after {
 }
 
 .plan-slide .plan-meta {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  margin-top: 8rpx;
-  min-width: 0;
-  flex-wrap: wrap;
+  margin-top: 0;
 }
 
 .plan-slide .plan-meta-route {
-  color: #727a84;
-  font-size: 22rpx;
+  color: #4f5660;
+  font-size: 23rpx;
+  font-weight: 900;
   line-height: 30rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -338,14 +381,41 @@ button::after {
   color: #0f766e;
 }
 
-.plan-default-badge {
+.plan-slide .trip-date-capsule,
+.trip-date-capsule {
   flex: 0 0 auto;
   padding: 6rpx 14rpx;
   border-radius: 999rpx;
-  background: #eef6df;
-  color: #4f5d34;
   font-size: 20rpx;
   font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.trip-date--today {
+  background: #ffe8ef;
+  color: #c9356a;
+}
+
+.trip-date--soon {
+  background: #fff3e0;
+  color: #c56a00;
+}
+
+.trip-date--near {
+  background: #e8f1ff;
+  color: #2563eb;
+}
+
+.trip-date--far {
+  background: #e7f5e8;
+  color: #237a35;
+}
+
+.trip-date--past,
+.trip-date--unset {
+  background: #eef0f2;
+  color: #8a9098;
 }
 
 .plan-empty {
@@ -503,6 +573,22 @@ button::after {
   font-weight: 700;
   line-height: 1.3;
   text-align: center;
+}
+
+.plan-sub-metric-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8rpx;
+  min-width: 0;
+}
+
+.plan-sub-metric--jin {
+  margin-top: 4rpx;
+  font-size: 20rpx;
+  font-weight: 700;
+  opacity: 0.92;
+  white-space: nowrap;
 }
 
 .plan-calorie-recommend {

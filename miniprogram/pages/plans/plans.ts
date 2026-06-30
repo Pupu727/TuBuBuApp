@@ -1,5 +1,6 @@
-import { getPlanList } from '../../services/dashboardService'
+import { getPlanPageHeader, getPlanPageSections } from '../../services/dashboardService'
 import { getPlanById, softDeletePlan } from '../../services/planService'
+import { isCompletedTripPlan } from '../../utils/planDate'
 import { syncTabBar } from '../../utils/tabBar'
 import {
   clearTransitionLoading as clearTransitionLoadingState,
@@ -7,11 +8,20 @@ import {
 } from '../../utils/transitionLoading'
 
 const buildPageData = (showSnapshotHelpModal: boolean) => {
+  const sections = getPlanPageSections()
+
   return {
-    plans: getPlanList(),
+    upcomingPlans: sections.upcomingPlans,
+    completedPlans: sections.completedPlans,
+    upcomingCount: sections.upcomingCount,
+    completedCount: sections.completedCount,
+    pageHeader: getPlanPageHeader(),
     showSnapshotHelpModal,
+    showCompletedPlans: false,
     showDeleteConfirm: false,
     deletingPlanId: '',
+    deleteConfirmTitle: '删除方案',
+    deleteConfirmContent: '删除后方案列表不再显示，方案中的装备快照也会一并移除。',
     openSwipePlanId: '',
     swipingPlanId: '',
     swipeOffsetPx: 0,
@@ -40,8 +50,8 @@ Page({
     const windowInfo = wx.getWindowInfo()
     const rpxRatio = windowInfo.windowWidth / 750
     const horizontalPadding = rpxRatio * 48
-    const gridGap = rpxRatio * 12
-    const cardWidthPx = (windowInfo.windowWidth - horizontalPadding - gridGap) / 2
+    const columnGap = rpxRatio * 12
+    const cardWidthPx = (windowInfo.windowWidth - horizontalPadding - columnGap) / 2
 
     this.setData({
       swipeActionWidthPx: rpxRatio * 96,
@@ -67,6 +77,9 @@ Page({
     const showSnapshotHelpModal = Boolean(this.data.showSnapshotHelpModal)
     const showDeleteConfirm = Boolean(this.data.showDeleteConfirm)
     const deletingPlanId = this.data.deletingPlanId as string
+    const showCompletedPlans = Boolean(this.data.showCompletedPlans)
+    const deleteConfirmTitle = this.data.deleteConfirmTitle as string
+    const deleteConfirmContent = this.data.deleteConfirmContent as string
     const openSwipePlanId = this.data.openSwipePlanId as string
     const swipingPlanId = this.data.swipingPlanId as string
     const swipeOffsetPx = this.data.swipeOffsetPx as number
@@ -74,8 +87,11 @@ Page({
 
     this.setData({
       ...buildPageData(showSnapshotHelpModal),
+      showCompletedPlans,
       showDeleteConfirm,
       deletingPlanId,
+      deleteConfirmTitle,
+      deleteConfirmContent,
       openSwipePlanId,
       swipingPlanId,
       swipeOffsetPx,
@@ -99,6 +115,20 @@ Page({
     })
   },
 
+  toggleCompletedPlans() {
+    const completedCount = this.data.completedCount as number
+
+    if (!completedCount) {
+      return
+    }
+
+    this.closeSwipe()
+
+    this.setData({
+      showCompletedPlans: !Boolean(this.data.showCompletedPlans),
+    })
+  },
+
   openPacking(event: WechatMiniprogram.TouchEvent) {
     const planId = event.currentTarget.dataset.id as string
 
@@ -108,6 +138,14 @@ Page({
 
     if (this.data.openSwipePlanId || Date.now() - this._lastSwipeTime < 260) {
       this.closeSwipe()
+      return
+    }
+
+    const plan = getPlanById(planId)
+    const isCompleted = plan ? isCompletedTripPlan(plan.start_date) : false
+
+    if (isCompleted) {
+      this.startTransitionNavigate('../plan-overview/plan-overview?planId=' + planId, '生成装备总览...')
       return
     }
 
@@ -167,9 +205,16 @@ Page({
       return
     }
 
+    const plan = getPlanById(planId)
+    const isCompleted = plan ? isCompletedTripPlan(plan.start_date) : false
+
     this.setData({
       showDeleteConfirm: true,
       deletingPlanId: planId,
+      deleteConfirmTitle: isCompleted ? '删除出行记录' : '删除方案',
+      deleteConfirmContent: isCompleted
+        ? '删除后将同时移除该次出行记录及装备快照，且无法恢复。'
+        : '删除后方案列表不再显示，方案中的装备快照也会一并移除。',
       openSwipePlanId: '',
       swipingPlanId: '',
       swipeOffsetPx: 0,

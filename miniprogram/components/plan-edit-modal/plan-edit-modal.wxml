@@ -43,19 +43,35 @@
       </view>
       <view class="edit-field">
         <view class="edit-field-head">
+          <text class="edit-label">出行日期</text>
+          <text class="required-star">*</text>
+          <text wx:if="{{showEditErrors && editErrors.startDate}}" class="field-error-text">请选择今天及以后的日期</text>
+        </view>
+        <custom-date-picker
+          floating="{{true}}"
+          future-only="{{true}}"
+          allow-clear="{{false}}"
+          embedded="{{true}}"
+          error="{{showEditErrors && editErrors.startDate}}"
+          value="{{editForm.startDate}}"
+          placeholder="选择出行日期"
+          bind:change="onEditStartDateChange"
+        />
+      </view>
+      <view class="edit-field">
+        <view class="edit-field-head">
           <text class="edit-label">出行天数</text>
           <text class="required-star">*</text>
           <text wx:if="{{showEditErrors && editErrors.days}}" class="field-error-text">不能为空</text>
         </view>
-        <view class="edit-input-shell {{showEditErrors && editErrors.days ? 'is-error' : ''}}">
-          <custom-trip-days-picker
-            floating="{{true}}"
-            days="{{editForm.days}}"
-            max-days="{{editForm.maxTripDays}}"
-            placeholder="选择几天几夜"
-            bind:change="onEditDaysChange"
-          />
-        </view>
+        <custom-trip-days-picker
+          floating="{{true}}"
+          error="{{showEditErrors && editErrors.days}}"
+          days="{{editForm.days}}"
+          max-days="{{editForm.maxTripDays}}"
+          placeholder="选择几天几夜"
+          bind:change="onEditDaysChange"
+        />
       </view>
       <view class="edit-field">
         <view class="edit-field-head">
@@ -65,7 +81,7 @@
         <textarea
           class="edit-textarea {{editLimits.remark ? 'is-error' : ''}}"
           value="{{editForm.remark}}"
-          placeholder="补充说明、天气、注意事项等"
+          placeholder="会显示在方案卡片上，如天气、队友提醒等"
           adjust-position="{{true}}"
           cursor-spacing="120"
           bindinput="onEditRemarkInput"

@@ -13,6 +13,28 @@ export const getTodayParts = (): DateParts => {
   }
 }
 
+export const compareDateParts = (left: DateParts, right: DateParts): number => {
+  if (left.year !== right.year) {
+    return left.year - right.year
+  }
+
+  if (left.month !== right.month) {
+    return left.month - right.month
+  }
+
+  return left.day - right.day
+}
+
+export const getFutureLimitParts = (yearsAhead = 2): DateParts => {
+  const today = getTodayParts()
+
+  return {
+    year: today.year + yearsAhead,
+    month: 12,
+    day: 31,
+  }
+}
+
 export const parseDateString = (value: string): DateParts | null => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim())
 
@@ -55,6 +77,24 @@ export const clampDateParts = (parts: DateParts, maxParts: DateParts): DateParts
   return { year, month, day }
 }
 
+export const clampDatePartsBetween = (parts: DateParts, minParts: DateParts, maxParts: DateParts): DateParts => {
+  let next = clampDateParts(parts, maxParts)
+
+  if (compareDateParts(next, minParts) < 0) {
+    next = { ...minParts }
+  }
+
+  if (next.year === minParts.year && next.month < minParts.month) {
+    next.month = minParts.month
+  }
+
+  if (next.year === minParts.year && next.month === minParts.month && next.day < minParts.day) {
+    next.day = minParts.day
+  }
+
+  return clampDateParts(next, maxParts)
+}
+
 export const buildYearOptions = (minYear: number, maxYear: number): number[] => {
   const years: number[] = []
 
@@ -65,24 +105,31 @@ export const buildYearOptions = (minYear: number, maxYear: number): number[] => 
   return years
 }
 
-export const buildMonthOptions = (year: number, maxParts: DateParts): number[] => {
+export const buildMonthOptions = (year: number, maxParts: DateParts, minParts?: DateParts): number[] => {
+  const minMonth = minParts && year === minParts.year ? minParts.month : 1
   const maxMonth = year === maxParts.year ? maxParts.month : 12
   const months: number[] = []
 
-  for (let month = 1; month <= maxMonth; month += 1) {
+  for (let month = minMonth; month <= maxMonth; month += 1) {
     months.push(month)
   }
 
   return months
 }
 
-export const buildDayOptions = (year: number, month: number, maxParts: DateParts): number[] => {
+export const buildDayOptions = (
+  year: number,
+  month: number,
+  maxParts: DateParts,
+  minParts?: DateParts
+): number[] => {
+  const minDay = minParts && year === minParts.year && month === minParts.month ? minParts.day : 1
   const maxDay = year === maxParts.year && month === maxParts.month
     ? maxParts.day
     : daysInMonth(year, month)
   const days: number[] = []
 
-  for (let day = 1; day <= maxDay; day += 1) {
+  for (let day = minDay; day <= maxDay; day += 1) {
     days.push(day)
   }
 

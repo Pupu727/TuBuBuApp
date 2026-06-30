@@ -6,6 +6,14 @@ import {
   togglePlanOverviewSection,
 } from '../../services/planOverviewService'
 import type { PlanOverviewAnchorView, PlanOverviewView } from '../../services/planOverviewService'
+
+interface BarChartItemView {
+  name: string
+  color: string
+  percent: string
+  metric: string
+  barPercent: number
+}
 import type { GearCategory } from '../../utils/models'
 import {
   finishInitialLoading,
@@ -43,7 +51,34 @@ const buildCategoryOverviewSwitches = (mode: CategoryOverviewMode): CategoryOver
   }))
 }
 
+const buildBarChartItems = (
+  overview: PlanOverviewView,
+  mode: CategoryOverviewMode,
+): BarChartItemView[] => {
+  return overview.chartItems.map((item) => {
+    if (mode === 'value') {
+      return {
+        name: item.name,
+        color: item.dotColor,
+        percent: item.valuePercent,
+        metric: item.valueLabel,
+        barPercent: Math.round(Number(item.valuePercent) || 0),
+      }
+    }
+
+    return {
+      name: item.name,
+      color: item.dotColor,
+      percent: item.weightPercent,
+      metric: item.weight,
+      barPercent: item.barPercent,
+    }
+  })
+}
+
 const buildCategoryOverviewData = (overview: PlanOverviewView, mode: CategoryOverviewMode) => {
+  const barChartItems = buildBarChartItems(overview, mode)
+
   if (mode === 'value') {
     return {
       categoryOverviewMode: mode,
@@ -57,6 +92,8 @@ const buildCategoryOverviewData = (overview: PlanOverviewView, mode: CategoryOve
       }))),
       categoryCenterValue: overview.totalValue,
       categoryCenterLabel: '总价值',
+      barChartItems,
+      categoryUseBarChart: false,
     }
   }
 
@@ -66,6 +103,8 @@ const buildCategoryOverviewData = (overview: PlanOverviewView, mode: CategoryOve
     categoryPieSlices: overview.categoryPieSlices,
     categoryCenterValue: overview.tripWeight,
     categoryCenterLabel: '总重量',
+    barChartItems,
+    categoryUseBarChart: true,
   }
 }
 
@@ -107,6 +146,8 @@ Page({
     categoryPieSlices: [] as PlanOverviewView['categoryPieSlices'],
     categoryCenterValue: '--',
     categoryCenterLabel: '总重量',
+    barChartItems: [] as BarChartItemView[],
+    categoryUseBarChart: true,
     showTransitionLoading: false,
     transitionLoadingText: '',
     initialLoading: true,

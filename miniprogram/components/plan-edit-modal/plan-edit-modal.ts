@@ -9,6 +9,7 @@ import {
   updatePlan,
 } from '../../services/planService'
 import type { PlanFormInput } from '../../services/planService'
+import { computePlanEndDate, getTodayDateString, isPlanDateOnOrAfterToday } from '../../utils/planDate'
 import { resolveDayNightMaxDays } from '../../utils/tripMeta'
 import {
   buildCreatePlanInput,
@@ -76,6 +77,10 @@ Component({
       }
 
       const input = planToFormInput(plan)
+      const startDate =
+        input.start_date && isPlanDateOnOrAfterToday(input.start_date)
+          ? input.start_date
+          : getTodayDateString()
 
       this.setData({
         show: true,
@@ -84,6 +89,7 @@ Component({
         editForm: {
           name: input.name,
           route: input.route,
+          startDate,
           days: input.days,
           maxTripDays: resolveDayNightMaxDays(input.days),
           remark: input.remark,
@@ -114,6 +120,19 @@ Component({
         'editForm.route': clampTextLength(raw, MAX_PLAN_ROUTE_LENGTH),
         'editLimits.route': isPlanTextLengthExceeded(raw, MAX_PLAN_ROUTE_LENGTH),
       })
+    },
+
+    onEditStartDateChange(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
+      const startDate = (event.detail.value || '').trim()
+      const updates: Record<string, unknown> = {
+        'editForm.startDate': startDate,
+      }
+
+      if (this.data.showEditErrors && this.data.editErrors.startDate) {
+        updates['editErrors.startDate'] = false
+      }
+
+      this.setData(updates)
     },
 
     onEditDaysChange(event: WechatMiniprogram.CustomEvent<{ days: number }>) {
@@ -148,7 +167,7 @@ Component({
       const editForm = this.data.editForm as PlanEditFormView
       const editErrors = validatePlanEditForm(editForm)
 
-      if (editErrors.name || editErrors.days) {
+      if (editErrors.name || editErrors.startDate || editErrors.days) {
         this.setData({
           editErrors,
           showEditErrors: true,
@@ -199,11 +218,14 @@ Component({
 
       const name = editForm.name.trim()
       const days = editForm.days
+      const startDate = editForm.startDate.trim()
       const baseInput = planToFormInput(plan)
       const input: PlanFormInput = {
         ...baseInput,
         name,
         route: editForm.route.trim(),
+        start_date: startDate,
+        end_date: computePlanEndDate(startDate, days),
         days,
         remark: editForm.remark.trim(),
       }

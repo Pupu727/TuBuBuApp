@@ -11,7 +11,7 @@
           <view class="daynight-capsule {{overview.dayNightToneClass}}">{{overview.dayNightLabel}}</view>
         </view>
       </view>
-      <text wx:if="{{overview.isDefault}}" class="default-badge">默认</text>
+      <view class="trip-date-capsule {{overview.tripDateToneClass}}">{{overview.tripDateLabel}}</view>
     </view>
 
     <view class="stats-grid">
@@ -24,7 +24,10 @@
         <text class="stat-label">出行重量</text>
       </view>
       <view class="stat-card">
-        <text class="stat-value orange">{{overview.backpackWeight}}</text>
+        <view class="stat-value-row">
+          <text class="stat-value orange">{{overview.backpackWeight}}</text>
+          <text wx:if="{{overview.backpackWeightJinLabel}}" class="stat-value-suffix stat-value-suffix--muted">(≈{{overview.backpackWeightJinLabel}}斤)</text>
+        </view>
         <text class="stat-label">背包重量</text>
       </view>
       <view class="stat-card">
@@ -81,14 +84,22 @@
           </block>
         </view>
       </view>
-      <text class="section-hint">点击扇区或图例查看详情</text>
-      <pie-chart
-        chart-key="category"
-        slices="{{categoryPieSlices}}"
-        center-value="{{categoryCenterValue}}"
-        center-label="{{categoryCenterLabel}}"
-        size="272"
-      ></pie-chart>
+      <text class="section-hint">{{categoryUseBarChart ? '按分类查看重量占比' : '点击扇区或图例查看详情'}}</text>
+      <view class="chart-body">
+        <bar-chart
+          wx:if="{{categoryUseBarChart}}"
+          items="{{barChartItems}}"
+          empty-text="暂无装备数据"
+        ></bar-chart>
+        <pie-chart
+          wx:else
+          chart-key="category"
+          slices="{{categoryPieSlices}}"
+          center-value="{{categoryCenterValue}}"
+          center-label="{{categoryCenterLabel}}"
+          size="272"
+        ></pie-chart>
+      </view>
     </view>
 
     <scroll-view

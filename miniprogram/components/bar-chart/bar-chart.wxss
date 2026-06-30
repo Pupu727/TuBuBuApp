@@ -1,0 +1,88 @@
+.bar-chart {
+  width: 100%;
+}
+
+.bar-empty-panel {
+  min-height: 180rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx dashed #e3e6e2;
+  border-radius: 22rpx;
+  background: #fbfbfa;
+}
+
+.bar-empty {
+  color: #92979d;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.bar-row + .bar-row {
+  margin-top: 22rpx;
+}
+
+.bar-label-row,
+.bar-label,
+.bar-metrics {
+  display: flex;
+  align-items: center;
+}
+
+.bar-label-row {
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.bar-label {
+  flex: 1;
+  min-width: 0;
+  gap: 10rpx;
+}
+
+.bar-dot {
+  flex: 0 0 auto;
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+}
+
+.bar-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 26rpx;
+  font-weight: 800;
+}
+
+.bar-metrics {
+  flex: 0 0 auto;
+  gap: 12rpx;
+}
+
+.bar-percent,
+.bar-metric {
+  color: #8a8f96;
+  font-size: 22rpx;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.bar-metric {
+  color: #60666e;
+}
+
+.bar-track {
+  height: 16rpx;
+  margin-top: 12rpx;
+  overflow: hidden;
+  border-radius: 999rpx;
+  background: #eef0f2;
+}
+
+.bar-fill {
+  min-width: 0;
+  height: 100%;
+  border-radius: 999rpx;
+}

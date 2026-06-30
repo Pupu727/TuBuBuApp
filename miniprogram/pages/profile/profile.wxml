@@ -29,7 +29,7 @@
     </view>
 
     <view class="section-card">
-      <text class="section-title">当前默认方案</text>
+      <text class="section-title">最近出行</text>
       <text class="section-plan-name">{{defaultPlanName}}</text>
       <text class="section-plan-meta">出行重量 {{defaultPlanWeight}}</text>
     </view>

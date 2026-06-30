@@ -1,4 +1,5 @@
 import { getPlanList } from '../../services/dashboardService'
+import { resolveActivePlanId } from '../../services/planService'
 import {
   MAX_GEAR_CHANNEL_LENGTH,
   MAX_GEAR_NAME_LENGTH,
@@ -9,6 +10,8 @@ import {
   clampWeightInputValue,
   convertWeightDisplayValue,
   createGear,
+  findGearByExactName,
+  incrementGearQuantity,
   listGears,
   normalizeGearQuantity,
 } from '../../services/gearService'
@@ -17,7 +20,9 @@ import {
   createPlanFromPacking,
   getCopyablePlanOptions,
   getPackingDraftItems,
+  getSwitchablePlanOptions,
   hasCopyablePackingContent,
+  savePackingToPlan,
 } from '../../services/packingService'
 import { softDeletePlan } from '../../services/planService'
 import { formatWeight } from '../../services/unitService'
@@ -37,6 +42,7 @@ import {
   GEAR_CATEGORY_COLORS,
   GEAR_CATEGORY_NAMES,
   GEAR_CATEGORY_OPTIONS,
+  GEAR_CATEGORY_ORDER,
   GEAR_STATUS_NAMES,
   getStatusOptionsForCategory,
   resolveStatusForCategory,
@@ -203,29 +209,39 @@ const getAvailableGears = (draftItems: DraftItem[]): Gear[] => {
   return listGears().filter((gear) => getAvailableQuantity(draftItems, gear) > 0)
 }
 
+const compareGearByName = (left: Gear, right: Gear): number => {
+  return left.name.localeCompare(right.name, 'zh-CN')
+}
+
 const buildCategories = (expandedCategoryId: string, draftItems: DraftItem[]): PackCategory[] => {
-  const gears = getAvailableGears(draftItems)
-  const categoryIds: GearCategory[] = []
+  const availableGears = getAvailableGears(draftItems).slice().sort(compareGearByName)
+  const gearsByCategory: Partial<Record<GearCategory, Gear[]>> = {}
 
-  return gears.reduce<PackCategory[]>((categories, gear) => {
+  availableGears.forEach((gear) => {
     const categoryId = gear.category
-    const existingIndex = categoryIds.indexOf(categoryId)
+    const categoryGears = gearsByCategory[categoryId] || []
 
-    if (existingIndex >= 0) {
-      categories[existingIndex].count += getAvailableQuantity(draftItems, gear)
-      categories[existingIndex].gears.push(toPackGear(gear, draftItems))
+    categoryGears.push(gear)
+    gearsByCategory[categoryId] = categoryGears
+  })
+
+  return GEAR_CATEGORY_ORDER.reduce<PackCategory[]>((categories, categoryId) => {
+    const gears = gearsByCategory[categoryId]
+
+    if (!gears || gears.length === 0) {
       return categories
     }
 
-    categoryIds.push(categoryId)
+    const count = gears.reduce((sum, gear) => sum + getAvailableQuantity(draftItems, gear), 0)
+
     categories.push({
       id: categoryId,
       name: getCategoryName(categoryId),
-      count: getAvailableQuantity(draftItems, gear),
+      count,
       dotColor: getCategoryColor(categoryId),
       expanded: categoryId === expandedCategoryId,
       caret: categoryId === expandedCategoryId ? '⌄' : '›',
-      gears: [toPackGear(gear, draftItems)],
+      gears: gears.map((gear) => toPackGear(gear, draftItems)),
     })
 
     return categories
@@ -242,9 +258,9 @@ const getActivePlanName = (planId?: string): string => {
     }
   }
 
-  const defaultPlan = plans.find((plan) => plan.isDefault) || plans[0]
+  const activePlan = plans.find((plan) => plan.id === resolveActivePlanId()) || plans[0]
 
-  return defaultPlan ? defaultPlan.name : '默认方案'
+  return activePlan ? activePlan.name : '出行方案'
 }
 
 const getInitialPlanId = (planId?: string): string => {
@@ -254,9 +270,7 @@ const getInitialPlanId = (planId?: string): string => {
     return planId
   }
 
-  const defaultPlan = plans.find((plan) => plan.isDefault) || plans[0]
-
-  return defaultPlan ? defaultPlan.id : ''
+  return resolveActivePlanId()
 }
 
 const resolveCopySourcePlanName = (planId: string, activePlanId: string): string => {
@@ -382,6 +396,36 @@ const pointInRect = (x: number, y: number, rect: DropRect): boolean => {
   return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
 }
 
+const serializeDraftSnapshot = (draftItems: DraftItem[]): string => {
+  const normalized = draftItems
+    .map((item) => ({
+      gearId: item.gearId,
+      quantity: item.quantity,
+      target: item.target,
+    }))
+    .sort((left, right) => {
+      if (left.gearId !== right.gearId) {
+        return left.gearId.localeCompare(right.gearId)
+      }
+
+      return left.target.localeCompare(right.target)
+    })
+
+  return JSON.stringify(normalized)
+}
+
+const isDraftDirty = (savedSnapshot: string, draftItems: DraftItem[]): boolean => {
+  return savedSnapshot !== serializeDraftSnapshot(draftItems)
+}
+
+const toPackingDraftInputs = (draftItems: DraftItem[]) => {
+  return draftItems.map((item) => ({
+    gearId: item.gearId,
+    quantity: item.quantity,
+    target: item.target,
+  }))
+}
+
 const buildPageData = (
   expandedCategoryId: string,
   showHelpModal: boolean,
@@ -390,21 +434,29 @@ const buildPageData = (
   dragState: DragState,
 ) => {
   const planOptions = getCopyablePlanOptions(activePlanId)
+  const activePlanOptions = getSwitchablePlanOptions(activePlanId)
 
   return {
     planName: getActivePlanName(activePlanId),
     activePlanId,
     planOptions,
+    activePlanOptions,
     hasMultiplePlans: planOptions.length > 1,
+    hasMultipleActivePlans: activePlanOptions.length > 1,
     copySourcePlanName: resolveCopySourcePlanName(activePlanId, activePlanId),
     selectedCopyFromPlanId: activePlanId,
     canDeletePlan: activePlanId.length > 0,
     showDeleteConfirm: false,
     showCopyPlanPanel: false,
     showCopyPlanConfirm: false,
+    showMissingBackpackConfirm: false,
     planPanelTop: 0,
     planPanelLeft: 0,
     planPanelWidth: 0,
+    showActivePlanPanel: false,
+    activePlanPanelTop: 0,
+    activePlanPanelLeft: 0,
+    activePlanPanelWidth: 0,
     pendingCopyFromPlanId: '',
     pendingCopyFromPlanName: '',
     gearCount: getGearLibraryCount(draftItems),
@@ -440,6 +492,14 @@ const applyWorkbenchData = (
     categoryOptions: GEAR_CATEGORY_OPTIONS,
     showCopyPlanConfirm: page.data.showCopyPlanConfirm,
     showCopyPlanPanel: page.data.showCopyPlanPanel,
+    showActivePlanPanel: page.data.showActivePlanPanel,
+    activePlanPanelTop: page.data.activePlanPanelTop,
+    activePlanPanelLeft: page.data.activePlanPanelLeft,
+    activePlanPanelWidth: page.data.activePlanPanelWidth,
+    showMissingBackpackConfirm: page.data.showMissingBackpackConfirm,
+    showLeaveConfirm: page.data.showLeaveConfirm,
+    pageContainerShow: page.data.pageContainerShow,
+    showDeleteConfirm: page.data.showDeleteConfirm,
     showDropQuantityModal: page.data.showDropQuantityModal,
     pendingDrop: page.data.pendingDrop,
     dropQuantity: page.data.dropQuantity,
@@ -470,9 +530,19 @@ Page({
     initialLoadingText: '整理打包清单...',
     showTransitionLoading: false,
     transitionLoadingText: '',
+    showDuplicateGearConfirm: false,
+    duplicateGearConfirmContent: '',
+    duplicateGearId: '',
+    pageContainerShow: true,
+    showLeaveConfirm: false,
+    leaveIntent: 'back' as 'back' | 'switch',
+    pendingSwitchPlanId: '',
+    showMissingBackpackConfirm: false,
   },
 
   _transitionTimer: 0,
+  _savedDraftSnapshot: '',
+  _skipLeaveGuard: false,
 
   onLoad(options: Record<string, string | undefined>) {
     markInitialLoadingStart(this)
@@ -480,7 +550,13 @@ Page({
     const planId = getInitialPlanId(options.planId)
     const draftItems = getPackingDraftItems(planId)
 
-    applyWorkbenchData(this, '', false, planId, draftItems, emptyDragState)
+    this._savedDraftSnapshot = serializeDraftSnapshot(draftItems)
+    this._skipLeaveGuard = false
+
+    applyWorkbenchData(this, '', false, planId, draftItems, emptyDragState, {
+      pageContainerShow: true,
+      showLeaveConfirm: false,
+    })
     finishInitialLoading(this)
   },
 
@@ -798,6 +874,222 @@ Page({
     applyWorkbenchData(this, expandedCategoryId, false, activePlanId, [], emptyDragState)
   },
 
+  isWorkbenchDirty(): boolean {
+    const draftItems = this.data.draftItems as DraftItem[]
+
+    return isDraftDirty(this._savedDraftSnapshot, draftItems)
+  },
+
+  syncSavedDraftSnapshot() {
+    const draftItems = this.data.draftItems as DraftItem[]
+
+    this._savedDraftSnapshot = serializeDraftSnapshot(draftItems)
+  },
+
+  applySwitchPlan(nextPlanId: string) {
+    if (!nextPlanId) {
+      return
+    }
+
+    const draftItems = getPackingDraftItems(nextPlanId)
+    this._savedDraftSnapshot = serializeDraftSnapshot(draftItems)
+    this._skipLeaveGuard = false
+
+    applyWorkbenchData(this, '', false, nextPlanId, draftItems, emptyDragState, {
+      showLeaveConfirm: false,
+      leaveIntent: 'back',
+      pendingSwitchPlanId: '',
+      showActivePlanPanel: false,
+      showCopyPlanPanel: false,
+      showCopyPlanConfirm: false,
+      pendingCopyFromPlanId: '',
+      pendingCopyFromPlanName: '',
+    })
+  },
+
+  onActivePlanTriggerTap() {
+    if (!this.data.hasMultipleActivePlans) {
+      return
+    }
+
+    if (this.data.showActivePlanPanel) {
+      this.closeActivePlanPanel()
+      return
+    }
+
+    this.closeCopyPlanPanel()
+
+    const query = wx.createSelectorQuery().in(this)
+    query.select('#activePlanTrigger').boundingClientRect()
+    query.exec((results) => {
+      const rect = results[0] as { left: number; bottom: number; width: number } | null
+      if (!rect) {
+        return
+      }
+
+      this.setData({
+        showActivePlanPanel: true,
+        activePlanPanelTop: rect.bottom + 4,
+        activePlanPanelLeft: rect.left,
+        activePlanPanelWidth: rect.width,
+      })
+    })
+  },
+
+  closeActivePlanPanel() {
+    if (!this.data.showActivePlanPanel) {
+      return
+    }
+
+    this.setData({
+      showActivePlanPanel: false,
+    })
+  },
+
+  selectActivePlanFromPanel(event: WechatMiniprogram.TouchEvent) {
+    const nextPlanId = event.currentTarget.dataset.id as string
+    const activePlanId = this.data.activePlanId as string
+
+    this.setData({
+      showActivePlanPanel: false,
+    })
+
+    if (!nextPlanId || nextPlanId === activePlanId) {
+      return
+    }
+
+    if (this.isWorkbenchDirty()) {
+      this.setData({
+        leaveIntent: 'switch',
+        pendingSwitchPlanId: nextPlanId,
+        showLeaveConfirm: true,
+      })
+      return
+    }
+
+    this.applySwitchPlan(nextPlanId)
+  },
+
+  completePageLeave() {
+    if (this._skipLeaveGuard) {
+      return
+    }
+
+    this._skipLeaveGuard = true
+
+    this.setData({
+      pageContainerShow: false,
+      showLeaveConfirm: false,
+    })
+
+    wx.nextTick(() => {
+      wx.navigateBack()
+    })
+  },
+
+  onPageBeforeLeave() {
+    if (this._skipLeaveGuard) {
+      return true
+    }
+
+    if (!this.isWorkbenchDirty()) {
+      this.completePageLeave()
+      // 由 completePageLeave 自己处理 navigateBack，取消默认离开
+      return false
+    }
+
+    this.setData({
+      leaveIntent: 'back',
+      showLeaveConfirm: true,
+    })
+
+    // 由弹窗处理下一步，取消默认离开
+    return false
+  },
+
+  closeLeaveConfirm() {
+    this.setData({
+      showLeaveConfirm: false,
+      pendingSwitchPlanId: '',
+      leaveIntent: 'back',
+      pageContainerShow: true,
+    })
+  },
+
+  discardLeaveChanges() {
+    const intent = this.data.leaveIntent as 'back' | 'switch'
+    const pendingSwitchPlanId = this.data.pendingSwitchPlanId as string
+
+    if (intent === 'switch' && pendingSwitchPlanId) {
+      this.setData({
+        showLeaveConfirm: false,
+      }, () => {
+        this.applySwitchPlan(pendingSwitchPlanId)
+      })
+      return
+    }
+
+    this.completePageLeave()
+  },
+
+  saveLeaveChanges() {
+    const activePlanId = this.data.activePlanId as string
+    const draftItems = this.data.draftItems as DraftItem[]
+    const result = savePackingToPlan(activePlanId, toPackingDraftInputs(draftItems))
+
+    if (!result.ok) {
+      wx.showToast({
+        title: result.message,
+        icon: 'none',
+      })
+      this.setData({
+        showLeaveConfirm: false,
+      })
+      return
+    }
+
+    this.syncSavedDraftSnapshot()
+
+    const intent = this.data.leaveIntent as 'back' | 'switch'
+    const pendingSwitchPlanId = this.data.pendingSwitchPlanId as string
+
+    if (intent === 'switch' && pendingSwitchPlanId) {
+      this.setData({
+        showLeaveConfirm: false,
+      }, () => {
+        this.applySwitchPlan(pendingSwitchPlanId)
+      })
+
+      wx.showToast({
+        title: '已保存到方案',
+        icon: 'success',
+        duration: 650,
+      })
+      return
+    }
+
+    this._skipLeaveGuard = true
+
+    this.setData({
+      showLeaveConfirm: false,
+      pageContainerShow: false,
+    })
+
+    wx.showToast({
+      title: '已保存到方案',
+      icon: 'success',
+      duration: 700,
+    })
+
+    setTimeout(() => {
+      wx.nextTick(() => {
+        wx.navigateBack()
+      })
+    }, 700)
+  },
+
+  // legacy: 切换方案改为面板触发器（见 selectActivePlanFromPanel）
+
   resetDragState() {
     this.setData({
       dragState: emptyDragState,
@@ -981,6 +1273,55 @@ Page({
     })
   },
 
+  closeMissingBackpackConfirm() {
+    this.setData({
+      showMissingBackpackConfirm: false,
+    })
+  },
+
+  confirmMissingBackpackContinue() {
+    this.setData({
+      showMissingBackpackConfirm: false,
+    })
+    this.doConfirmPacking()
+  },
+
+  doConfirmPacking() {
+    const activePlanId = this.data.activePlanId as string
+    const planName = this.data.planName as string
+    const draftItems = this.data.draftItems as DraftItem[]
+    const result = createPlanFromPacking({
+      name: planName,
+      sourcePlanId: activePlanId,
+      items: draftItems.map((item) => ({
+        gearId: item.gearId,
+        quantity: item.quantity,
+        target: item.target,
+      })),
+    })
+
+    if (!result.ok) {
+      wx.showToast({
+        title: result.message,
+        icon: 'none',
+      })
+      return
+    }
+
+    this._skipLeaveGuard = true
+    this.syncSavedDraftSnapshot()
+
+    wx.showToast({
+      title: result.mode === 'updated' ? '已更新方案' : '已生成方案',
+      icon: 'success',
+      duration: 800,
+    })
+
+    setTimeout(() => {
+      this.startTransitionSwitchTab('/pages/plans/plans', '返回出行方案...')
+    }, 800)
+  },
+
   executeDeletePlan() {
     const activePlanId = this.data.activePlanId as string
 
@@ -1003,6 +1344,8 @@ Page({
       return
     }
 
+    this._skipLeaveGuard = true
+
     wx.showToast({
       title: '已删除方案',
       icon: 'success',
@@ -1015,36 +1358,21 @@ Page({
   },
 
   confirmPacking() {
-    const activePlanId = this.data.activePlanId as string
-    const planName = this.data.planName as string
     const draftItems = this.data.draftItems as DraftItem[]
-    const result = createPlanFromPacking({
-      name: planName,
-      sourcePlanId: activePlanId,
-      items: draftItems.map((item) => ({
-        gearId: item.gearId,
-        quantity: item.quantity,
-        target: item.target,
-      })),
-    })
+    const bagCount = getDraftCount(getDraftItems(draftItems, 'bag'))
+    if (bagCount > 0) {
+      const nonBagItems = getDraftItems(draftItems, 'nonBag')
+      const hasBackpack = nonBagItems.some((item) => item.category === 'carry')
 
-    if (!result.ok) {
-      wx.showToast({
-        title: result.message,
-        icon: 'none',
-      })
-      return
+      if (!hasBackpack) {
+        this.setData({
+          showMissingBackpackConfirm: true,
+        })
+        return
+      }
     }
 
-    wx.showToast({
-      title: result.mode === 'updated' ? '已更新方案' : '已生成方案',
-      icon: 'success',
-      duration: 800,
-    })
-
-    setTimeout(() => {
-      this.startTransitionSwitchTab('/pages/plans/plans', '返回出行方案...')
-    }, 800)
+    this.doConfirmPacking()
   },
 
   goAdd() {
@@ -1282,6 +1610,71 @@ Page({
       return
     }
 
+    const existingGear = findGearByExactName(form.name)
+
+    if (existingGear) {
+      this.setData({
+        showDuplicateGearConfirm: true,
+        duplicateGearConfirmContent: `装备「${existingGear.name}」已存在，是否为该装备增加 1 件数量？`,
+        duplicateGearId: existingGear.id,
+      })
+      return
+    }
+
+    this.executeSaveAddGear()
+  },
+
+  closeDuplicateGearConfirm() {
+    this.setData({
+      showDuplicateGearConfirm: false,
+      duplicateGearConfirmContent: '',
+      duplicateGearId: '',
+    })
+  },
+
+  confirmDuplicateGearQuantity() {
+    const gearId = this.data.duplicateGearId as string
+
+    if (!gearId) {
+      this.closeDuplicateGearConfirm()
+      return
+    }
+
+    const result = incrementGearQuantity(gearId, 1)
+
+    if (!result.ok) {
+      wx.showToast({
+        title: result.message,
+        icon: 'none',
+      })
+      return
+    }
+
+    this.closeDuplicateGearConfirm()
+
+    const expandedCategoryId = this.data.expandedCategoryId as string
+    const activePlanId = this.data.activePlanId as string
+    const draftItems = this.data.draftItems as DraftItem[]
+
+    wx.hideKeyboard()
+
+    applyWorkbenchData(this, expandedCategoryId, false, activePlanId, draftItems, emptyDragState, {
+      showAddGearModal: false,
+      addGearForm: defaultGearFormView(),
+      addGearErrors: defaultGearFormErrors(),
+      addGearLimits: defaultGearFormInputLimits(),
+      showAddGearErrors: false,
+      addStatusOptions: getStatusOptionsForCategory('carry'),
+    })
+
+    wx.showToast({
+      title: '数量已增加',
+      icon: 'success',
+    })
+  },
+
+  executeSaveAddGear() {
+    const form = this.data.addGearForm as GearFormViewModel
     const result = createGear(gearFormInputFromView(form))
 
     if (!result.ok) {

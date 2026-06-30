@@ -4,6 +4,7 @@
     "custom-select": "../../components/custom-select/custom-select",
     "custom-date-picker": "../../components/custom-date-picker/custom-date-picker",
     "quantity-stepper": "../../components/quantity-stepper/quantity-stepper",
+    "confirm-dialog": "../../components/confirm-dialog/confirm-dialog",
     "app-loading": "../../components/app-loading/app-loading"
   }
 }

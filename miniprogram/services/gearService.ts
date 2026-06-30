@@ -1,5 +1,6 @@
 import { gearRepository } from '../repositories/storageRepository'
 import {
+  GEAR_CATEGORY_COLORS,
   GEAR_CATEGORY_NAMES,
   GEAR_STATUS_NAMES,
   normalizeGearCategory,
@@ -49,6 +50,9 @@ export interface GearListItem {
   dailyCost: string
   imageUrl: string
   hasImage: boolean
+  showQuantityBadge: boolean
+  quantityLabel: string
+  quantityBadgeColor: string
 }
 
 export type GearMutationResult =
@@ -337,6 +341,7 @@ const inputToGearPatch = (input: GearFormInput): Omit<Gear, 'id' | 'deleted' | '
 const gearToListItem = (gear: Gear): GearListItem => {
   const category = normalizeGearCategory(gear.category)
   const status = normalizeGearStatus(gear.status)
+  const quantity = normalizeGearQuantity(gear.quantity)
 
   return {
     id: gear.id,
@@ -351,6 +356,9 @@ const gearToListItem = (gear: Gear): GearListItem => {
     dailyCost: calcDailyCost(gear.price_cent, gear.purchase_date),
     imageUrl: gear.image_url,
     hasImage: Boolean(gear.image_url),
+    showQuantityBadge: quantity > 1,
+    quantityLabel: `x${quantity}`,
+    quantityBadgeColor: GEAR_CATEGORY_COLORS[category],
   }
 }
 
@@ -378,6 +386,16 @@ export const listGears = (query?: GearQuery): Gear[] => {
 
 export const getGearById = (id: string): Gear | undefined => {
   return activeGears().find((gear) => gear.id === id)
+}
+
+export const findGearByExactName = (name: string): Gear | undefined => {
+  const normalized = clampTextLength(name.trim(), MAX_GEAR_NAME_LENGTH)
+
+  if (!normalized) {
+    return undefined
+  }
+
+  return activeGears().find((gear) => gear.name === normalized)
 }
 
 export const getGearSummary = (query?: GearQuery): GearSummary => {
@@ -454,6 +472,25 @@ export const updateGear = (id: string, input: GearFormInput): GearMutationResult
   }
 
   return { ok: true, gear: updated }
+}
+
+export const incrementGearQuantity = (id: string, delta = 1): GearMutationResult => {
+  const gear = getGearById(id)
+
+  if (!gear) {
+    return { ok: false, message: '装备不存在或已删除' }
+  }
+
+  const nextQuantity = normalizeGearQuantity(gear.quantity) + delta
+
+  if (nextQuantity > MAX_GEAR_QUANTITY) {
+    return { ok: false, message: '数量超出限制' }
+  }
+
+  const input = gearToFormInput(gear)
+  input.quantity = nextQuantity
+
+  return updateGear(id, input)
 }
 
 export const softDeleteGear = (id: string): GearMutationResult => {

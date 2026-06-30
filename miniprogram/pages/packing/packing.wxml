@@ -1,5 +1,11 @@
-﻿<page-skeleton show="{{initialLoading}}" text="{{initialLoadingText}}" />
+<page-skeleton show="{{initialLoading}}" text="{{initialLoadingText}}" />
 
+<page-container
+  show="{{pageContainerShow}}"
+  overlay="{{false}}"
+  custom-style="height:100vh;width:100vw;overflow:visible;background:#f7f8f4;"
+  bindbeforeleave="onPageBeforeLeave"
+>
 <block wx:if="{{!initialLoading}}">
 <scroll-view class="page" scroll-y>
   <view class="screen">
@@ -33,6 +39,13 @@
 
     <view class="workbench">
       <view class="library-panel">
+        <view wx:if="{{activePlanOptions.length > 0}}" class="active-plan-switch plan-select-wrap">
+          <text class="active-plan-label plan-select-label">当前方案</text>
+          <view id="activePlanTrigger" class="plan-select-trigger" catchtap="onActivePlanTriggerTap">
+            <text class="plan-select-value">{{planName}}</text>
+            <text wx:if="{{hasMultipleActivePlans}}" class="plan-select-arrow">{{showActivePlanPanel ? '▴' : '▾'}}</text>
+          </view>
+        </view>
         <view id="libraryDrop" class="library-card">
           <view class="library-head">
             <text class="library-title">装备库</text>
@@ -271,6 +284,25 @@
   </block>
 </view>
 
+<view wx:if="{{showActivePlanPanel}}" class="plan-panel-mask" catchtap="closeActivePlanPanel"></view>
+<view
+  wx:if="{{showActivePlanPanel}}"
+  class="plan-panel plan-panel--dropdown"
+  style="top: {{activePlanPanelTop}}px; left: {{activePlanPanelLeft}}px; width: {{activePlanPanelWidth}}px;"
+  catchtap="noop"
+>
+  <block wx:for="{{activePlanOptions}}" wx:key="id">
+    <view
+      class="plan-panel-item"
+      data-id="{{item.id}}"
+      catchtap="selectActivePlanFromPanel"
+    >
+      <text class="plan-panel-name">{{item.name}}</text>
+      <text wx:if="{{item.id === activePlanId}}" class="plan-panel-current">当前</text>
+    </view>
+  </block>
+</view>
+
 <view
   wx:if="{{dragState.active}}"
   class="drag-ghost"
@@ -320,6 +352,24 @@
   confirm-text="确认复制"
   bind:confirm="confirmCopyPlanPacking"
   bind:cancel="closeCopyPlanConfirm"
+/>
+
+<confirm-dialog
+  show="{{showDuplicateGearConfirm}}"
+  title="装备已存在"
+  content="{{duplicateGearConfirmContent}}"
+  confirm-text="增加数量"
+  bind:confirm="confirmDuplicateGearQuantity"
+  bind:cancel="closeDuplicateGearConfirm"
+/>
+
+<confirm-dialog
+  show="{{showMissingBackpackConfirm}}"
+  title="还没有添加背包"
+  content="你已经把装备装入背包，但非装包里还没有「背负系统/背包」相关装备。确认后仍会继续保存打包方式。"
+  confirm-text="继续确认"
+  bind:confirm="confirmMissingBackpackContinue"
+  bind:cancel="closeMissingBackpackConfirm"
 />
 
 <view wx:if="{{showDropQuantityModal}}" class="drop-qty-mask modal-mask modal-viewport-center--compact" catchtap="closeDropQuantityModal">
@@ -562,6 +612,19 @@
   <button class="confirm" bindtap="confirmPacking">确认打包</button>
 </view>
 </block>
+</page-container>
+
+<view wx:if="{{showLeaveConfirm}}" class="leave-mask" catchtap="closeLeaveConfirm">
+  <view class="leave-panel" catchtap="noop">
+    <text class="leave-title">打包尚未确认</text>
+    <text class="leave-content">当前修改还未确认打包，是否保存到方案？</text>
+    <view class="leave-actions">
+      <view class="leave-btn primary" catchtap="saveLeaveChanges">保存</view>
+      <view class="leave-btn muted" catchtap="discardLeaveChanges">不保存</view>
+      <view class="leave-btn ghost" catchtap="closeLeaveConfirm">取消</view>
+    </view>
+  </view>
+</view>
 
 <app-loading
   show="{{showTransitionLoading}}"

@@ -7,8 +7,10 @@ import {
   clampPriceInputValue,
   clampWeightInputValue,
   createGear,
+  findGearByExactName,
   getGearById,
   gearToFormInput,
+  incrementGearQuantity,
   convertWeightDisplayValue,
   parseCalorieKcal,
   parseWeightToGrams,
@@ -16,8 +18,9 @@ import {
   updateGear,
 } from '../../services/gearService'
 import type { GearFormInput } from '../../services/gearService'
-import { getGearList, getGearListForPlan, getGearSummaryByFilter, getGearSummaryForPlan, getPlanList } from '../../services/dashboardService'
-import { setDefaultPlan } from '../../services/planService'
+import { getGearList, getGearListForPlan, getGearSummaryByFilter, getGearSummaryForPlan, getGearHeaderInsight, getGearsForPlanHeader, getPlanList } from '../../services/dashboardService'
+import { listGears } from '../../services/gearService'
+import { resolveActivePlanId } from '../../services/planService'
 import {
   GEAR_CATEGORY_OPTIONS,
   GEAR_STATUS_NAMES,
@@ -157,9 +160,9 @@ const resolveDefaultPlanId = (): string => {
     return fallbackPlan.id
   }
 
-  const defaultPlan = plans.find((plan) => plan.isDefault) || plans[0]
+  const activePlan = plans.find((plan) => plan.id === resolveActivePlanId()) || plans[0]
 
-  return defaultPlan.id
+  return activePlan.id
 }
 
 const resolveSelectedPlanId = (selectedPlanId: string): string => {
@@ -173,9 +176,9 @@ const resolveSelectedPlanId = (selectedPlanId: string): string => {
     return selectedPlanId
   }
 
-  const defaultPlan = plans.find((plan) => plan.isDefault) || plans[0]
+  const activePlan = plans.find((plan) => plan.id === resolveActivePlanId()) || plans[0]
 
-  return defaultPlan.id
+  return activePlan.id
 }
 
 const resolvePlanIndex = (planOptions: PlanOption[], selectedPlanId: string): number => {
@@ -302,12 +305,23 @@ const buildPageData = (state: PageState) => {
   const hasAnyGear = allGears.length > 0
   const showNoResults = hasAnyGear && gears.length === 0
   const noResultsText = keyword ? '未找到匹配的装备' : '当前筛选下暂无装备'
+  const hasActiveFilter = resolvedCategory !== 'all' || Boolean(keyword)
+  const showClearFilters = showNoResults && hasActiveFilter
   const isPlanEmpty = isPlanView && !hasAnyGear
   const emptyTitle = isPlanEmpty ? '当前方案还没有装备' : '还没有装备'
+  const emptyDesc = isPlanEmpty
+    ? '去打包页把装备加入当前方案'
+    : '可手动新增，或用智能解析批量录入'
+  const headerGears = isPlanView ? getGearsForPlanHeader(resolvedPlanId) : listGears()
+  const headerInsight = getGearHeaderInsight(headerGears, resolvedCategory, {
+    eyebrow: isPlanView ? activePlan.name : '全部装备',
+    isPlanEmpty,
+  })
 
   return {
     viewMode: state.viewMode,
     summary,
+    headerInsight,
     categories: buildCategoryTabs(resolvedCategory, ownedCategories),
     activeCategory: resolvedCategory,
     planOptions,
@@ -321,8 +335,10 @@ const buildPageData = (state: PageState) => {
     isPlanView,
     isPlanEmpty,
     emptyTitle,
+    emptyDesc,
     showNoResults,
     noResultsText,
+    showClearFilters,
     showCategoryRail: ownedCategories.length > 0,
     showSmartPackModal: state.showSmartPackModal,
     showEditModal: state.showEditModal,
@@ -382,11 +398,16 @@ Page({
     isBatchDeleteMode: false,
     selectedGearIds: [],
     showBatchDeleteConfirm: false,
+    showDuplicateGearConfirm: false,
+    duplicateGearConfirmContent: '',
+    duplicateGearId: '',
     }),
     showTransitionLoading: false,
     transitionLoadingText: '',
     initialLoading: true,
     initialLoadingText: '读取装备库...',
+    showBackToTop: false,
+    pageScrollTop: 0,
   },
 
   _transitionTimer: 0,
@@ -443,6 +464,28 @@ Page({
     }
   },
 
+  onPageScroll(event: WechatMiniprogram.ScrollViewScroll) {
+    const detail = event && (event as WechatMiniprogram.ScrollViewScroll).detail
+    const top = detail && typeof detail.scrollTop === 'number' ? detail.scrollTop : 0
+    const show = top >= 420
+    if (show !== Boolean(this.data.showBackToTop)) {
+      this.setData({
+        showBackToTop: show,
+      })
+    }
+  },
+
+  scrollToTop() {
+    const current = Number(this.data.pageScrollTop) || 0
+    // scroll-view 通过 scroll-top 回顶；先写入一个微小不同值，避免某些机型不触发
+    this.setData({ pageScrollTop: current === 0 ? 1 : 0 }, () => {
+      this.setData({
+        pageScrollTop: 0,
+        showBackToTop: false,
+      })
+    })
+  },
+
   onSearchInput(event: WechatMiniprogram.Input) {
     const state = getPageState(this)
     state.searchKeyword = event.detail.value
@@ -453,6 +496,14 @@ Page({
   clearSearch() {
     const state = getPageState(this)
     state.searchKeyword = ''
+
+    this.setData(buildPageData(state))
+  },
+
+  clearAllFilters() {
+    const state = getPageState(this)
+    state.searchKeyword = ''
+    state.activeCategory = 'all'
 
     this.setData(buildPageData(state))
   },
@@ -509,7 +560,6 @@ Page({
       state.selectedPlanId = resolveSelectedPlanId(state.selectedPlanId)
       state.activeCategory = 'all'
       state.showPlanPanel = false
-      setDefaultPlan(state.selectedPlanId)
       this.setData(buildPageData(state))
       return
     }
@@ -550,8 +600,6 @@ Page({
     state.selectedPlanId = planId
     state.activeCategory = 'all'
     state.showPlanPanel = false
-
-    setDefaultPlan(planId)
 
     this.setData(buildPageData(state))
   },
@@ -966,6 +1014,71 @@ Page({
       })
       return
     }
+
+    if (!gearId) {
+      const existingGear = findGearByExactName(editForm.name)
+
+      if (existingGear) {
+        this.setData({
+          showDuplicateGearConfirm: true,
+          duplicateGearConfirmContent: `装备「${existingGear.name}」已存在，是否为该装备增加 1 件数量？`,
+          duplicateGearId: existingGear.id,
+        })
+        return
+      }
+    }
+
+    this.executeSaveEdit()
+  },
+
+  closeDuplicateGearConfirm() {
+    this.setData({
+      showDuplicateGearConfirm: false,
+      duplicateGearConfirmContent: '',
+      duplicateGearId: '',
+    })
+  },
+
+  confirmDuplicateGearQuantity() {
+    const gearId = this.data.duplicateGearId as string
+
+    if (!gearId) {
+      this.closeDuplicateGearConfirm()
+      return
+    }
+
+    const result = incrementGearQuantity(gearId, 1)
+
+    if (!result.ok) {
+      wx.showToast({
+        title: result.message,
+        icon: 'none',
+      })
+      return
+    }
+
+    this.closeDuplicateGearConfirm()
+    wx.showToast({
+      title: '数量已增加',
+      icon: 'success',
+    })
+    wx.hideKeyboard()
+
+    const state = getPageState(this)
+    state.showEditModal = false
+    state.editingGearId = ''
+    state.editForm = defaultForm()
+    state.editErrors = defaultErrors()
+    state.editLimits = defaultGearFormInputLimits()
+    state.showEditErrors = false
+    state.showDeleteConfirm = false
+
+    this.setData(buildPageData(state))
+  },
+
+  executeSaveEdit() {
+    const gearId = this.data.editingGearId as string
+    const editForm = this.data.editForm as FormViewModel
 
     const result = gearId
       ? updateGear(gearId, formFromView(editForm))

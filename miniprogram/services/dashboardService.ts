@@ -9,6 +9,21 @@ import {
 import type { Gear, GearCategory, PlanItem, TripPlan } from '../utils/models'
 import { formatDayNight, resolveDayNightToneClass } from '../utils/tripMeta'
 import {
+  daysUntilPlanDate,
+  formatDaysUntilLabel,
+  formatPlanDateCapsule,
+  hasTripSchedule,
+  isCompletedTripPlan,
+  partitionPlansByTripStatus,
+  type PlanTripStatus,
+  resolveLastPastTripPlan,
+  resolveNearestUpcomingPlan,
+  resolveTripCountdownProgressNum,
+  resolveTripCountdownProgressToneClass,
+  resolveTripDateToneClass,
+  sortPlansByStartDate,
+} from '../utils/planDate'
+import {
   getGearListItems,
   getGearOwnedValueCent,
   getGearOwnedWeightG,
@@ -17,6 +32,7 @@ import {
   normalizeGearQuantity,
 } from './gearService'
 import type { GearListItem, GearSummary } from './gearService'
+import { getPlanOverview } from './planOverviewService'
 import { centToYuan, formatWeight } from './unitService'
 
 export interface DashboardSummary {
@@ -47,6 +63,32 @@ export interface CategoryOverviewItem {
   dotColor: string
 }
 
+export interface GearHeaderStripItem {
+  category: GearCategory | 'all'
+  name: string
+  percent: number
+  color: string
+  widthStyle: string
+  activeClass: string
+}
+
+export interface GearHeaderLegendItem {
+  category: GearCategory | 'all'
+  name: string
+  percent: string
+  color: string
+  activeClass: string
+}
+
+export interface GearHeaderInsight {
+  eyebrow: string
+  insightText: string
+  categoryStrip: GearHeaderStripItem[]
+  categoryLegend: GearHeaderLegendItem[]
+  showCategoryStrip: boolean
+  gearCountBadge: string
+}
+
 export type { GearSummary, GearListItem }
 
 export interface GearCategoryOption {
@@ -62,7 +104,242 @@ export interface PlanListItem {
   dayNightLabel: string
   dayNightToneClass: string
   weight: string
-  isDefault: boolean
+  startDate: string
+  tripDateLabel: string
+  tripDateToneClass: string
+  daysUntil: number | null
+  daysUntilLabel: string
+}
+
+export interface PlanPageCard extends PlanListItem {
+  remark: string
+  remarkPreview: string
+  hasRemark: boolean
+  tripStatus: PlanTripStatus
+  tripQuantity: number
+  backpackWeight: string
+  packedPercent: string
+  packedPercentNum: number
+  tripCountdownPercentNum: number
+  tripCountdownToneClass: string
+  hasTripSchedule: boolean
+  hasItems: boolean
+  emptyHint: string
+  statsLine: string
+  packedCapsuleLabel: string
+  packedCapsuleToneClass: string
+}
+
+export interface PlanPageMetric {
+  value: string
+  label: string
+}
+
+export interface PlanPageHeader {
+  planCount: number
+  spotlightTitle: string
+  insightText: string
+  showUpcomingInsight: boolean
+  insightRouteLabel: string
+  insightDaysUntil: number
+  insightDateLabel: string
+  insightDepartToday: boolean
+  insightCountdownToneClass: string
+  metrics: PlanPageMetric[]
+  hasPlans: boolean
+}
+
+const buildRemarkPreview = (remark: string): Pick<PlanPageCard, 'remark' | 'remarkPreview' | 'hasRemark'> => {
+  const trimmed = remark.trim()
+
+  if (!trimmed) {
+    return {
+      remark: '',
+      remarkPreview: '暂无备注',
+      hasRemark: false,
+    }
+  }
+
+  return {
+    remark: trimmed,
+    remarkPreview: trimmed,
+    hasRemark: true,
+  }
+}
+
+const buildPlanTripDateFields = (startDate: string): Pick<
+  PlanListItem,
+  'startDate' | 'tripDateLabel' | 'tripDateToneClass' | 'daysUntil' | 'daysUntilLabel'
+> => {
+  const daysUntil = daysUntilPlanDate(startDate)
+
+  return {
+    startDate,
+    tripDateLabel: formatPlanDateCapsule(startDate),
+    tripDateToneClass: resolveTripDateToneClass(startDate),
+    daysUntil,
+    daysUntilLabel: formatDaysUntilLabel(daysUntil),
+  }
+}
+
+const buildPlanListItem = (plan: TripPlan): PlanListItem => {
+  return {
+    id: plan.id,
+    name: plan.name,
+    route: plan.route,
+    days: plan.days,
+    dayNightLabel: formatDayNight(plan.days),
+    dayNightToneClass: resolveDayNightToneClass(plan.days),
+    weight: formatWeight(planWeight(plan.id)),
+    ...buildPlanTripDateFields(plan.start_date),
+  }
+}
+
+const parsePackedPercentNum = (packedPercent: string): number => {
+  if (packedPercent === '--') {
+    return 0
+  }
+
+  const num = Number.parseInt(packedPercent.replace('%', ''), 10)
+  return Number.isFinite(num) ? num : 0
+}
+
+const buildPackedCapsule = (
+  hasItems: boolean,
+  packedPercent: string,
+  packedPercentNum: number
+): Pick<PlanPageCard, 'packedCapsuleLabel' | 'packedCapsuleToneClass'> => {
+  if (!hasItems) {
+    return {
+      packedCapsuleLabel: '待打包',
+      packedCapsuleToneClass: 'pack-capsule--pending',
+    }
+  }
+
+  if (packedPercentNum >= 100) {
+    return {
+      packedCapsuleLabel: '已打包',
+      packedCapsuleToneClass: 'pack-capsule--done',
+    }
+  }
+
+  if (packedPercentNum > 0) {
+    return {
+      packedCapsuleLabel: `已打包 ${packedPercent}`,
+      packedCapsuleToneClass: 'pack-capsule--progress',
+    }
+  }
+
+  return {
+    packedCapsuleLabel: '待打包',
+    packedCapsuleToneClass: 'pack-capsule--pending',
+  }
+}
+
+const buildPlanPageCard = (plan: TripPlan): PlanPageCard => {
+  const overview = getPlanOverview(plan.id)
+  const remarkFields = buildRemarkPreview(plan.remark)
+  const packedPercentNum = parsePackedPercentNum(overview.packedPercent)
+  const scheduled = hasTripSchedule(plan.start_date)
+  const tripStatus: PlanTripStatus = isCompletedTripPlan(plan.start_date) ? 'completed' : 'upcoming'
+  const tripCountdownPercentNum = scheduled
+    ? resolveTripCountdownProgressNum(plan.start_date) || 0
+    : 0
+  const hasItems = !overview.isEmpty
+  const emptyHint = '暂无装备'
+  const statsLine = hasItems
+    ? `${overview.tripQuantity}件 · ${overview.backpackWeight}`
+    : emptyHint
+  const packedCapsule =
+    tripStatus === 'completed'
+      ? { packedCapsuleLabel: '已出行', packedCapsuleToneClass: 'pack-capsule--completed' }
+      : buildPackedCapsule(hasItems, overview.packedPercent, packedPercentNum)
+
+  return {
+    ...buildPlanListItem(plan),
+    ...remarkFields,
+    ...packedCapsule,
+    tripQuantity: overview.tripQuantity,
+    tripStatus,
+    backpackWeight: overview.backpackWeight,
+    packedPercent: overview.packedPercent,
+    packedPercentNum,
+    tripCountdownPercentNum,
+    tripCountdownToneClass:
+      tripStatus === 'completed' ? 'trip-progress-fill--past' : resolveTripCountdownProgressToneClass(plan.start_date),
+    hasTripSchedule: scheduled,
+    hasItems,
+    emptyHint,
+    statsLine,
+  }
+}
+
+const buildEmptyPlanPageMetrics = (): PlanPageMetric[] => {
+  return []
+}
+
+const resolveUpcomingRouteLabel = (upcoming: { route: string }): string => {
+  const route = upcoming.route.trim()
+
+  return route || '暂无路线'
+}
+
+const resolveLastTripMetricValue = (plans: TripPlan[]): string => {
+  const lastPast = resolveLastPastTripPlan(plans)
+
+  if (!lastPast) {
+    return '--'
+  }
+
+  const route = lastPast.route.trim()
+
+  return route || '暂无路线'
+}
+
+const buildPlanPageHeaderFromPlans = (plans: TripPlan[]): PlanPageHeader => {
+  const planCount = plans.length
+  const readyCount = plans.filter((plan) => !getPlanOverview(plan.id).isEmpty).length
+  const upcoming = resolveNearestUpcomingPlan(plans)
+  const lastTripMetricValue = resolveLastTripMetricValue(plans)
+  const spotlightTitle = `共 ${planCount} 个出行方案`
+  let insightText = ''
+  let showUpcomingInsight = false
+  let insightRouteLabel = ''
+  let insightDaysUntil = 0
+  let insightDateLabel = ''
+  let insightDepartToday = false
+  let insightCountdownToneClass = ''
+
+  if (upcoming) {
+    showUpcomingInsight = true
+    insightRouteLabel = resolveUpcomingRouteLabel(upcoming)
+    insightDaysUntil = upcoming.daysUntil
+    insightDateLabel = formatPlanDateCapsule(upcoming.startDate)
+    insightDepartToday = upcoming.daysUntil === 0
+    insightCountdownToneClass = resolveTripDateToneClass(upcoming.startDate)
+  } else if (readyCount === 0) {
+    insightText = '先为方案设置出行日期，再开始整理装备'
+  } else {
+    insightText = '最近没有待出发方案，可为下方方案补充出行日期'
+  }
+
+  return {
+    planCount,
+    spotlightTitle,
+    insightText,
+    showUpcomingInsight,
+    insightRouteLabel,
+    insightDaysUntil,
+    insightDateLabel,
+    insightDepartToday,
+    insightCountdownToneClass,
+    metrics: [
+      { value: String(planCount), label: '个方案' },
+      { value: String(readyCount), label: '已装备' },
+      { value: lastTripMetricValue, label: '上次出行' },
+    ],
+    hasPlans: true,
+  }
 }
 
 const activePlans = (): TripPlan[] => tripPlanRepository.list().filter((plan) => !plan.deleted)
@@ -79,6 +356,27 @@ const planWeight = (planId: string): number => {
   return activePlanItems()
     .filter((item) => item.plan_id === planId && activeGearIds.has(item.gear_id))
     .reduce((sum, item) => sum + item.weight_g_snapshot * item.quantity, 0)
+}
+
+const getActivePlanGearIds = (planId: string): string[] => {
+  const activeGearIds = new Set(listGears().map((gear) => gear.id))
+  const gearIds: string[] = []
+
+  activePlanItems().forEach((item) => {
+    if (item.plan_id !== planId || !activeGearIds.has(item.gear_id)) {
+      return
+    }
+
+    if (gearIds.indexOf(item.gear_id) < 0) {
+      gearIds.push(item.gear_id)
+    }
+  })
+
+  return gearIds
+}
+
+const sortCategoryOverviewsByWeight = (items: CategoryOverviewItem[]): CategoryOverviewItem[] => {
+  return items.slice().sort((left, right) => Number(right.weightPercent) - Number(left.weightPercent))
 }
 
 const buildCategoryOverviews = (
@@ -111,15 +409,99 @@ const buildCategoryOverviews = (
   return items
 }
 
+const resolveLegendActiveClass = (
+  category: GearCategory | 'all',
+  activeCategory: GearCategory | 'all'
+): string => {
+  if (category === 'all') {
+    return activeCategory === 'all' ? 'is-active' : ''
+  }
+
+  return activeCategory === category ? 'is-active' : ''
+}
+
+export const getGearHeaderInsight = (
+  gears: Gear[],
+  activeCategory: GearCategory | 'all' = 'all',
+  options?: {
+    eyebrow?: string
+    isPlanEmpty?: boolean
+  }
+): GearHeaderInsight => {
+  const eyebrow = (options && options.eyebrow) || '全部装备'
+  const totalGearWeight = gears.reduce((sum, gear) => sum + getGearOwnedWeightG(gear), 0)
+  const categoryOverviews = sortCategoryOverviewsByWeight(buildCategoryOverviews(gears, totalGearWeight, 0))
+  const gearCount = gears.reduce((sum, gear) => sum + normalizeGearQuantity(gear.quantity), 0)
+  const gearCountBadge = `${gearCount} 件`
+
+  if (options && options.isPlanEmpty) {
+    return {
+      eyebrow,
+      insightText: '当前方案还没有装备',
+      categoryStrip: [],
+      categoryLegend: [],
+      showCategoryStrip: false,
+      gearCountBadge: '0 件',
+    }
+  }
+
+  if (!gears.length || categoryOverviews.length === 0) {
+    return {
+      eyebrow,
+      insightText: '添加第一件装备，开始管理你的背负',
+      categoryStrip: [],
+      categoryLegend: [],
+      showCategoryStrip: false,
+      gearCountBadge,
+    }
+  }
+
+  const primaryCategory = categoryOverviews[0]
+  const insightText = `${primaryCategory.name}最重 · 占总重 ${primaryCategory.weightPercent}%`
+  const categoryStrip: GearHeaderStripItem[] = categoryOverviews.map((item) => ({
+    category: item.category,
+    name: item.name,
+    percent: Number(item.weightPercent),
+    color: item.dotColor,
+    widthStyle: `flex: ${item.weightPercent};`,
+    activeClass: resolveLegendActiveClass(item.category, activeCategory),
+  }))
+  const categoryLegend: GearHeaderLegendItem[] = categoryOverviews.map((item) => ({
+    category: item.category,
+    name: item.name,
+    percent: `${item.weightPercent}%`,
+    color: item.dotColor,
+    activeClass: resolveLegendActiveClass(item.category, activeCategory),
+  }))
+
+  return {
+    eyebrow,
+    insightText,
+    categoryStrip,
+    categoryLegend,
+    showCategoryStrip: true,
+    gearCountBadge,
+  }
+}
+
+export const getGearsForPlanHeader = (planId: string): Gear[] => {
+  const gearIds = new Set(getActivePlanGearIds(planId))
+
+  return listGears().filter((gear) => gearIds.has(gear.id))
+}
+
 export const getDashboardSummary = (): DashboardSummary => {
   const gears = listGears()
   const plans = activePlans()
-  const defaultPlan = plans.find((plan) => plan.is_default) || plans[0]
+  const upcoming = resolveNearestUpcomingPlan(plans)
+  const defaultPlan = upcoming
+    ? plans.find((plan) => plan.id === upcoming.planId)
+    : plans[0]
   const totalGearWeight = gears.reduce((sum, gear) => sum + getGearOwnedWeightG(gear), 0)
   const totalGearValue = gears.reduce((sum, gear) => sum + getGearOwnedValueCent(gear), 0)
   const summary = getGearSummary()
   const defaultPlanWeight = defaultPlan ? planWeight(defaultPlan.id) : 0
-  const categoryOverviews = buildCategoryOverviews(gears, totalGearWeight, totalGearValue)
+  const categoryOverviews = sortCategoryOverviewsByWeight(buildCategoryOverviews(gears, totalGearWeight, totalGearValue))
   const primaryCategory = categoryOverviews[0]
   const hasGear = summary.gearCount > 0
 
@@ -163,23 +545,6 @@ export const getGearList = (category?: GearCategory, keyword?: string): GearList
   })
 }
 
-const getActivePlanGearIds = (planId: string): string[] => {
-  const activeGearIds = new Set(listGears().map((gear) => gear.id))
-  const gearIds: string[] = []
-
-  activePlanItems().forEach((item) => {
-    if (item.plan_id !== planId || !activeGearIds.has(item.gear_id)) {
-      return
-    }
-
-    if (gearIds.indexOf(item.gear_id) < 0) {
-      gearIds.push(item.gear_id)
-    }
-  })
-
-  return gearIds
-}
-
 export const getGearListForPlan = (
   planId: string,
   category?: GearCategory,
@@ -217,14 +582,61 @@ export const getGearSummaryForPlan = (
 }
 
 export const getPlanList = (): PlanListItem[] => {
-  return activePlans().map((plan) => ({
-    id: plan.id,
-    name: plan.name,
-    route: plan.route,
-    days: plan.days,
-    dayNightLabel: formatDayNight(plan.days),
-    dayNightToneClass: resolveDayNightToneClass(plan.days),
-    weight: formatWeight(planWeight(plan.id)),
-    isDefault: plan.is_default,
-  }))
+  const { upcomingPlans } = partitionPlansByTripStatus(activePlans())
+  return sortPlansByStartDate(upcomingPlans).map((plan) => buildPlanListItem(plan))
+}
+
+export const getPlanPageCards = (): PlanPageCard[] => {
+  const { upcomingPlans } = partitionPlansByTripStatus(activePlans())
+  return sortPlansByStartDate(upcomingPlans).map((plan) => buildPlanPageCard(plan))
+}
+
+export interface PlanPageSections {
+  upcomingPlans: PlanPageCard[]
+  completedPlans: PlanPageCard[]
+  upcomingCount: number
+  completedCount: number
+}
+
+const sortPlansByStartDateDesc = <T extends { start_date: string }>(plans: T[]): T[] => {
+  return sortPlansByStartDate(plans).slice().reverse()
+}
+
+export const getPlanPageSections = (): PlanPageSections => {
+  const plans = activePlans()
+  const { upcomingPlans, completedPlans } = partitionPlansByTripStatus(plans)
+
+  const upcomingCards = sortPlansByStartDate(upcomingPlans).map((plan) => buildPlanPageCard(plan))
+  const completedCards = sortPlansByStartDateDesc(completedPlans).map((plan) => buildPlanPageCard(plan))
+
+  return {
+    upcomingPlans: upcomingCards,
+    completedPlans: completedCards,
+    upcomingCount: upcomingCards.length,
+    completedCount: completedCards.length,
+  }
+}
+
+export const getPlanPageHeader = (): PlanPageHeader => {
+  const plans = activePlans()
+  const planCount = plans.length
+
+  if (planCount === 0) {
+    return {
+      planCount: 0,
+      spotlightTitle: '',
+      insightText: '创建第一个出行方案，开始管理装备和重量',
+      showUpcomingInsight: false,
+      insightRouteLabel: '',
+      insightDaysUntil: 0,
+      insightDateLabel: '',
+      insightDepartToday: false,
+      insightCountdownToneClass: '',
+      metrics: buildEmptyPlanPageMetrics(),
+      hasPlans: false,
+    }
+  }
+
+  const { upcomingPlans } = partitionPlansByTripStatus(plans)
+  return buildPlanPageHeaderFromPlans(upcomingPlans)
 }

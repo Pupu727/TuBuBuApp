@@ -8,6 +8,8 @@ import {
   clampWeightInputValue,
   createGear,
   convertWeightDisplayValue,
+  findGearByExactName,
+  incrementGearQuantity,
   parseCalorieKcal,
   parseWeightToGrams,
 } from '../../services/gearService'
@@ -25,6 +27,14 @@ import {
   isTextLengthExceeded,
   type GearFormInputLimits,
 } from '../../utils/gearFormView'
+import { listPlans } from '../../services/planService'
+import {
+  getDefaultPlanLabel,
+  parseSmartGearText,
+  saveSmartParseItems,
+  type SmartParseItem,
+  type SmartParseSaveTarget,
+} from '../../services/smartParseService'
 import { syncTabBar } from '../../utils/tabBar'
 import {
   clearTransitionLoading as clearTransitionLoadingState,
@@ -91,6 +101,63 @@ const validateFormView = (form: FormViewModel): FormErrors => {
   }
 }
 
+const PARSE_EXAMPLE_TEXT = [
+  '艾王35+5L 背包 1100g 125元',
+  'MH500冲锋衣 450g 433元',
+  '能量胶 40g 6元 x4',
+  '测试装备 2.1kg 100元',
+].join('\n')
+
+const buildParseSummaryText = (items: SmartParseItem[]): string => {
+  const validCount = items.filter((item) => item.ok).length
+  const errorCount = items.length - validCount
+
+  if (!items.length) {
+    return '0 条结果'
+  }
+
+  if (errorCount <= 0) {
+    return `${validCount} 条可保存`
+  }
+
+  return `${validCount} 条可保存 · ${errorCount} 条需修正`
+}
+
+const countSavableParseItems = (items: SmartParseItem[]): number => {
+  return items.filter((item) => item.ok && item.included).length
+}
+
+const buildParseSaveConfirmContent = (items: SmartParseItem[], target: SmartParseSaveTarget): string => {
+  const count = countSavableParseItems(items)
+  const targetLabel = target === 'gear_library' ? '装备库' : `方案「${getDefaultPlanLabel()}」`
+
+  return `将保存 ${count} 项到${targetLabel}，确认继续？`
+}
+
+const buildParseViewData = (input: {
+  parseText: string
+  parseItems: SmartParseItem[]
+  showParsePreview: boolean
+  saveTarget: SmartParseSaveTarget
+  showParseSaveConfirm: boolean
+}) => {
+  const hasDefaultPlan = listPlans().length > 0
+  const savableParseCount = countSavableParseItems(input.parseItems)
+
+  return {
+    parseText: input.parseText,
+    parseItems: input.parseItems,
+    showParsePreview: input.showParsePreview,
+    saveTarget: input.saveTarget,
+    hasDefaultPlan,
+    defaultPlanLabel: getDefaultPlanLabel(),
+    parseSummaryText: buildParseSummaryText(input.parseItems),
+    savableParseCount,
+    showParseSaveConfirm: input.showParseSaveConfirm,
+    parseSaveConfirmContent: buildParseSaveConfirmContent(input.parseItems, input.saveTarget),
+  }
+}
+
 Page({
   data: {
     form: defaultForm(),
@@ -101,12 +168,29 @@ Page({
     statusOptions: getStatusOptionsForCategory('carry'),
     showTransitionLoading: false,
     transitionLoadingText: '',
+    showDuplicateGearConfirm: false,
+    duplicateGearConfirmContent: '',
+    duplicateGearId: '',
+    ...buildParseViewData({
+      parseText: '',
+      parseItems: [],
+      showParsePreview: false,
+      saveTarget: 'gear_library',
+      showParseSaveConfirm: false,
+    }),
   },
 
   _transitionTimer: 0,
 
   onShow() {
     syncTabBar(this, 2)
+    this.setData(buildParseViewData({
+      parseText: this.data.parseText as string,
+      parseItems: (this.data.parseItems as SmartParseItem[]) || [],
+      showParsePreview: Boolean(this.data.showParsePreview),
+      saveTarget: (this.data.saveTarget as SmartParseSaveTarget) || 'gear_library',
+      showParseSaveConfirm: Boolean(this.data.showParseSaveConfirm),
+    }))
   },
 
   onHide() {
@@ -345,6 +429,57 @@ Page({
       return
     }
 
+    const existingGear = findGearByExactName(form.name)
+
+    if (existingGear) {
+      this.setData({
+        showDuplicateGearConfirm: true,
+        duplicateGearConfirmContent: `装备「${existingGear.name}」已存在，是否为该装备增加 1 件数量？`,
+        duplicateGearId: existingGear.id,
+      })
+      return
+    }
+
+    this.createNewGear()
+  },
+
+  closeDuplicateGearConfirm() {
+    this.setData({
+      showDuplicateGearConfirm: false,
+      duplicateGearConfirmContent: '',
+      duplicateGearId: '',
+    })
+  },
+
+  confirmDuplicateGearQuantity() {
+    const gearId = this.data.duplicateGearId as string
+
+    if (!gearId) {
+      this.closeDuplicateGearConfirm()
+      return
+    }
+
+    const result = incrementGearQuantity(gearId, 1)
+
+    if (!result.ok) {
+      wx.showToast({
+        title: result.message,
+        icon: 'none',
+      })
+      return
+    }
+
+    this.closeDuplicateGearConfirm()
+    wx.showToast({
+      title: '数量已增加',
+      icon: 'success',
+    })
+    this.resetFormAfterSave()
+    this.startTransitionSwitchTab('/pages/equipment/equipment', '打开装备库...')
+  },
+
+  createNewGear() {
+    const form = this.data.form as FormViewModel
     const result = createGear(formFromView(form))
 
     if (!result.ok) {
@@ -360,6 +495,11 @@ Page({
       icon: 'success',
     })
 
+    this.resetFormAfterSave()
+    this.startTransitionSwitchTab('/pages/equipment/equipment', '打开装备库...')
+  },
+
+  resetFormAfterSave() {
     this.setData({
       form: defaultForm(),
       errors: defaultErrors(),
@@ -367,14 +507,164 @@ Page({
       showErrors: false,
       statusOptions: getStatusOptionsForCategory('carry'),
     })
-
-    this.startTransitionSwitchTab('/pages/equipment/equipment', '打开装备库...')
   },
 
-  showParseHint() {
-    wx.showToast({
-      title: '智能解析将在 Stage 08 接入',
-      icon: 'none',
+  onParseInput(event: WechatMiniprogram.Input) {
+    this.setData({
+      parseText: event.detail.value,
     })
+  },
+
+  fillParseExample() {
+    this.setData({
+      parseText: PARSE_EXAMPLE_TEXT,
+    })
+  },
+
+  runSmartParse() {
+    const parseText = (this.data.parseText as string) || ''
+    const parseItems = parseSmartGearText(parseText)
+
+    if (!parseText.trim()) {
+      wx.showToast({
+        title: '请输入装备文本',
+        icon: 'none',
+      })
+    }
+
+    this.setData(buildParseViewData({
+      parseText,
+      parseItems,
+      showParsePreview: true,
+      saveTarget: (this.data.saveTarget as SmartParseSaveTarget) || 'gear_library',
+      showParseSaveConfirm: false,
+    }))
+  },
+
+  toggleParseItem(event: WechatMiniprogram.TouchEvent) {
+    const index = Number(event.currentTarget.dataset.index)
+
+    if (!Number.isFinite(index)) {
+      return
+    }
+
+    const parseItems = ((this.data.parseItems as SmartParseItem[]) || []).slice()
+    const item = parseItems[index]
+
+    if (!item || !item.ok) {
+      return
+    }
+
+    item.included = !item.included
+    parseItems[index] = item
+
+    this.setData(buildParseViewData({
+      parseText: (this.data.parseText as string) || '',
+      parseItems,
+      showParsePreview: Boolean(this.data.showParsePreview),
+      saveTarget: (this.data.saveTarget as SmartParseSaveTarget) || 'gear_library',
+      showParseSaveConfirm: false,
+    }))
+  },
+
+  selectSaveTarget(event: WechatMiniprogram.TouchEvent) {
+    const target = event.currentTarget.dataset.target as SmartParseSaveTarget | undefined
+
+    if (target !== 'gear_library' && target !== 'default_plan') {
+      return
+    }
+
+    if (target === 'default_plan' && !this.data.hasDefaultPlan) {
+      wx.showToast({
+        title: '请先创建出行方案',
+        icon: 'none',
+      })
+      return
+    }
+
+    this.setData(buildParseViewData({
+      parseText: (this.data.parseText as string) || '',
+      parseItems: (this.data.parseItems as SmartParseItem[]) || [],
+      showParsePreview: Boolean(this.data.showParsePreview),
+      saveTarget: target,
+      showParseSaveConfirm: false,
+    }))
+  },
+
+  openSaveConfirm() {
+    const parseItems = (this.data.parseItems as SmartParseItem[]) || []
+    const savableParseCount = countSavableParseItems(parseItems)
+
+    if (savableParseCount <= 0) {
+      wx.showToast({
+        title: '没有可保存的装备',
+        icon: 'none',
+      })
+      return
+    }
+
+    const invalidIncluded = parseItems.some((item) => !item.ok && item.included)
+
+    if (invalidIncluded) {
+      wx.showToast({
+        title: '请先修正无法解析的行',
+        icon: 'none',
+      })
+      return
+    }
+
+    this.setData(buildParseViewData({
+      parseText: (this.data.parseText as string) || '',
+      parseItems,
+      showParsePreview: true,
+      saveTarget: (this.data.saveTarget as SmartParseSaveTarget) || 'gear_library',
+      showParseSaveConfirm: true,
+    }))
+  },
+
+  closeParseSaveConfirm() {
+    this.setData(buildParseViewData({
+      parseText: (this.data.parseText as string) || '',
+      parseItems: (this.data.parseItems as SmartParseItem[]) || [],
+      showParsePreview: Boolean(this.data.showParsePreview),
+      saveTarget: (this.data.saveTarget as SmartParseSaveTarget) || 'gear_library',
+      showParseSaveConfirm: false,
+    }))
+  },
+
+  confirmSaveParse() {
+    const parseItems = (this.data.parseItems as SmartParseItem[]) || []
+    const saveTarget = (this.data.saveTarget as SmartParseSaveTarget) || 'gear_library'
+    const result = saveSmartParseItems(parseItems, saveTarget)
+
+    this.closeParseSaveConfirm()
+
+    if (!result.ok) {
+      wx.showToast({
+        title: result.message,
+        icon: 'none',
+      })
+      return
+    }
+
+    wx.showToast({
+      title: result.message,
+      icon: 'success',
+    })
+
+    this.setData(buildParseViewData({
+      parseText: '',
+      parseItems: [],
+      showParsePreview: false,
+      saveTarget,
+      showParseSaveConfirm: false,
+    }))
+
+    if (saveTarget === 'default_plan') {
+      this.startTransitionSwitchTab('/pages/plans/plans', '打开方案页...')
+      return
+    }
+
+    this.startTransitionSwitchTab('/pages/equipment/equipment', '打开装备库...')
   },
 })

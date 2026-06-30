@@ -1,0 +1,32 @@
+<view class="bar-chart">
+  <block wx:if="{{displayItems.length === 0}}">
+    <view class="bar-empty-panel">
+      <text class="bar-empty">{{emptyText}}</text>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view
+      wx:for="{{displayItems}}"
+      wx:key="name"
+      class="bar-row"
+    >
+      <view class="bar-label-row">
+        <view class="bar-label">
+          <view class="bar-dot" style="background: {{item.color}};"></view>
+          <text class="bar-name">{{item.name}}</text>
+        </view>
+        <view class="bar-metrics">
+          <text class="bar-percent">{{item.percent}}%</text>
+          <text class="bar-metric">{{item.metric}}</text>
+        </view>
+      </view>
+      <view class="bar-track">
+        <view
+          class="bar-fill"
+          style="width: {{item.barWidth}}; background: {{item.color}};"
+        ></view>
+      </view>
+    </view>
+  </block>
+</view>

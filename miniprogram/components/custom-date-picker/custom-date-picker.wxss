@@ -17,6 +17,28 @@
   box-sizing: border-box;
 }
 
+.custom-date-picker.embedded {
+  margin-top: 0;
+}
+
+.custom-date-picker.embedded .picker-trigger {
+  height: 76rpx;
+  padding: 0 20rpx;
+  border: 1rpx solid #e2e4e6;
+  border-radius: 16rpx;
+  background: #fbfbfa;
+}
+
+.custom-date-picker.embedded.is-error .picker-trigger {
+  border-color: #f1a9a9;
+  background: #fff7f7;
+}
+
+.custom-date-picker.embedded .picker-value {
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
 .custom-date-picker.compact .picker-trigger {
   height: 76rpx;
   padding: 0 16rpx;

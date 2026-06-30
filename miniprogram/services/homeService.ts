@@ -5,6 +5,7 @@ import { evaluateComfortForPlan } from './comfortService'
 import type { ComfortView } from './comfortService'
 import { getPlanList } from './dashboardService'
 import { getPlanOverview } from './planOverviewService'
+import { resolveActivePlanId } from './planService'
 
 export interface HomePlanCarouselItem {
   id: string
@@ -12,11 +13,15 @@ export interface HomePlanCarouselItem {
   routeLabel: string
   dayNightLabel: string
   dayNightToneClass: string
+  tripDateLabel: string
+  tripDateToneClass: string
+  showTripCountdown: boolean
+  tripCountdownLabel: string
   tripWeight: string
   backpackWeight: string
+  backpackWeightJinLabel: string
   calorieKcalLabel: string
   calorieRecommend: CalorieRecommendView
-  isDefault: boolean
   hasItems: boolean
   comfort: ComfortView
 }
@@ -68,7 +73,7 @@ export const resolveHomeActivePlanId = (): string => {
     }
   }
 
-  const defaultPlan = plans.find((plan) => plan.isDefault) || plans[0]
+  const defaultPlan = plans.find((plan) => plan.id === resolveActivePlanId()) || plans[0]
   return defaultPlan ? defaultPlan.id : ''
 }
 
@@ -83,6 +88,13 @@ export const rememberHomeActivePlanId = (planId: string): void => {
 export const getHomePlanCarouselItems = (): HomePlanCarouselItem[] => {
   return getPlanList().map((plan) => {
     const overview = getPlanOverview(plan.id)
+    const showTripCountdown = plan.daysUntil !== null && plan.daysUntil >= 0
+    const tripCountdownLabel = !showTripCountdown
+      ? ''
+      : plan.daysUntil === 0
+        ? '今天'
+        : `还有${plan.daysUntil}天`
+    const backpackWeightJinLabel = overview.backpackWeightJinLabel || ''
 
     return {
       id: plan.id,
@@ -90,11 +102,15 @@ export const getHomePlanCarouselItems = (): HomePlanCarouselItem[] => {
       routeLabel: plan.route && plan.route.trim() ? plan.route.trim() : '暂无路线',
       dayNightLabel: plan.dayNightLabel,
       dayNightToneClass: plan.dayNightToneClass,
+      tripDateLabel: plan.tripDateLabel,
+      tripDateToneClass: plan.tripDateToneClass,
+      showTripCountdown,
+      tripCountdownLabel,
       tripWeight: overview.tripWeight,
       backpackWeight: overview.backpackWeight,
+      backpackWeightJinLabel,
       calorieKcalLabel: overview.calorieKcalLabel,
       calorieRecommend: evaluateCalorieRecommendForPlan(plan.id, plan.days),
-      isDefault: plan.isDefault,
       hasItems: !overview.isEmpty,
       comfort: evaluateComfortForPlan(plan.id),
     }

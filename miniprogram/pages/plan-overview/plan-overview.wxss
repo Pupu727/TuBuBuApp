@@ -145,14 +145,40 @@ button::after {
   color: #8a5a17;
 }
 
-.default-badge {
+.trip-date-capsule {
   flex: 0 0 auto;
   padding: 7rpx 16rpx;
   border-radius: 14rpx;
-  background: #e7f5e8;
-  color: #237a35;
   font-size: 22rpx;
   font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.trip-date--today {
+  background: #ffe8ef;
+  color: #c9356a;
+}
+
+.trip-date--soon {
+  background: #fff3e0;
+  color: #c56a00;
+}
+
+.trip-date--near {
+  background: #e8f1ff;
+  color: #2563eb;
+}
+
+.trip-date--far {
+  background: #e7f5e8;
+  color: #237a35;
+}
+
+.trip-date--past,
+.trip-date--unset {
+  background: #eef0f2;
+  color: #8a9098;
 }
 
 .stats-grid {
@@ -192,6 +218,31 @@ button::after {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.stat-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+}
+
+.stat-value-row .stat-value {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.stat-value-suffix {
+  flex: 0 0 auto;
+  font-size: 30rpx;
+  font-weight: 700;
+  opacity: 0.92;
+  white-space: nowrap;
+}
+
+.stat-value-suffix--muted {
+  color: #8b9096;
 }
 
 .stat-label {
@@ -265,6 +316,10 @@ button::after {
   color: #8a8f96;
   font-size: 22rpx;
   font-weight: 700;
+}
+
+.chart-body {
+  margin-top: 20rpx;
 }
 
 .breakdown-card,
